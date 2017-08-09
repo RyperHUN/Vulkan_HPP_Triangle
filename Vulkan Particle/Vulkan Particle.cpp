@@ -150,37 +150,22 @@ public:
 		indices.count = static_cast<uint32_t>(indexBuffer.size());
 		uint32_t indexBufferSize = indices.count * sizeof(uint32_t);
 
-		VkMemoryAllocateInfo memAlloc = {};
-		memAlloc.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-		VkMemoryRequirements memReqs;
-
-		void *data;
 		///TODO Staging is faster
 		{
 			// Don't use staging
 			// Create host-visible buffers only and use these for rendering. This is not advised and will usually result in lower rendering performance
 
+			//Vertex Buffer
 			BuffMem vertexBuff = vulkanDevice->createBuffer (vk::BufferUsageFlagBits::eVertexBuffer, 
 				vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, vertexBufferSize, vertexBuffer.data());
 			vertices.buffer = vertexBuff.buff;
 			vertices.memory = vertexBuff.mem;
 
 			// Index buffer
-			VkBufferCreateInfo indexbufferInfo = {};
-			indexbufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-			indexbufferInfo.size = indexBufferSize;
-			indexbufferInfo.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-
-			// Copy index data to a buffer visible to the host
-			VK_CHECK_RESULT(vkCreateBuffer(device, &indexbufferInfo, nullptr, &indices.buffer));
-			vkGetBufferMemoryRequirements(device, indices.buffer, &memReqs);
-			memAlloc.allocationSize = memReqs.size;
-			memAlloc.memoryTypeIndex = vulkanDevice->getMemoryType(memReqs.memoryTypeBits, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-			VK_CHECK_RESULT(vkAllocateMemory(device, &memAlloc, nullptr, &indices.memory));
-			VK_CHECK_RESULT(vkMapMemory(device, indices.memory, 0, indexBufferSize, 0, &data));
-			memcpy(data, indexBuffer.data(), indexBufferSize);
-			vkUnmapMemory(device, indices.memory);
-			VK_CHECK_RESULT(vkBindBufferMemory(device, indices.buffer, indices.memory, 0));
+			BuffMem result = vulkanDevice->createBuffer(vk::BufferUsageFlagBits::eVertexBuffer,
+				vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, indexBufferSize, indexBuffer.data());
+			indices.buffer = result.buff;
+			indices.memory = result.mem;
 		}
 	}
 
