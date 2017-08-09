@@ -282,20 +282,17 @@ void VulkanExampleBase::submitFrame()
 
 VulkanExampleBase::VulkanExampleBase(bool enableValidation)
 {
-#if !defined(__ANDROID__)
+
 	// Check for a valid asset path
-	struct stat info;
-	if (stat(getAssetPath().c_str(), &info) != 0)
-	{
-#if defined(_WIN32)
-		std::string msg = "Could not locate asset path in \"" + getAssetPath() + "\" !";
-		MessageBox(NULL, msg.c_str(), "Fatal error", MB_OK | MB_ICONERROR);
-#else
-		std::cerr << "Error: Could not find asset path in " << getAssetPath() << std::endl;
-#endif
-		exit(-1);
-	}
-#endif
+	//struct stat info;
+	//if (stat(getAssetPath().c_str(), &info) != 0)
+	//{
+
+	//	std::string msg = "Could not locate asset path in \"" + getAssetPath() + "\" !";
+	//	MessageBox(NULL, msg.c_str(), "Fatal error", MB_OK | MB_ICONERROR);
+
+	//	exit(-1);
+	//}
 
 	settings.validation = enableValidation;
 
@@ -328,26 +325,16 @@ VulkanExampleBase::VulkanExampleBase(bool enableValidation)
 		}
 	}
 
-#if defined(__ANDROID__)
-	// Vulkan library is loaded dynamically on Android
-	bool libLoaded = vks::android::loadVulkanLibrary();
-	assert(libLoaded);
-#elif defined(_DIRECT2DISPLAY)
 
-#elif defined(VK_USE_PLATFORM_WAYLAND_KHR)
-	initWaylandConnection();
-#elif defined(__linux__)
-	initxcbConnection();
-#endif
 
-#if defined(_WIN32)
+
 	// Enable console if validation is active
 	// Debug message callback will output to it
 	if (this->settings.validation)
 	{
 		setupConsole("Vulkan validation output");
 	}
-#endif
+
 }
 
 VulkanExampleBase::~VulkanExampleBase()
@@ -821,8 +808,6 @@ void VulkanExampleBase::handleMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
 void VulkanExampleBase::viewChanged() {}
 
 void VulkanExampleBase::keyPressed(uint32_t) {}
-
-void VulkanExampleBase::buildCommandBuffers() {}
 
 void VulkanExampleBase::createCommandPool()
 {
