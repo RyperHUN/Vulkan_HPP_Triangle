@@ -415,7 +415,7 @@ namespace vks
 		{
 			assert(dst->size <= src->size);
 			assert(src->buffer && src->buffer);
-			VkCommandBuffer copyCmd = createCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
+			VkCommandBuffer copyCmd = createCommandBuffer(vk::CommandBufferLevel::ePrimary, true);
 			VkBufferCopy bufferCopy{};
 			if (copyRegion == nullptr)
 			{
@@ -460,18 +460,21 @@ namespace vks
 		*
 		* @return A handle to the allocated command buffer
 		*/
-		VkCommandBuffer createCommandBuffer(VkCommandBufferLevel level, bool begin = false)
+		vk::CommandBuffer createCommandBuffer(vk::CommandBufferLevel level, bool begin = false)
 		{
-			VkCommandBufferAllocateInfo cmdBufAllocateInfo = vks::initializers::commandBufferAllocateInfo(commandPool, level, 1);
+			vk::CommandBufferAllocateInfo cmdBufAllocateInfo;
+			cmdBufAllocateInfo.setCommandPool (commandPool)
+				.setLevel (level)
+				.setCommandBufferCount (1);
 
-			VkCommandBuffer cmdBuffer;
-			VK_CHECK_RESULT(vkAllocateCommandBuffers(logicalDevice, &cmdBufAllocateInfo, &cmdBuffer));
+			vk::CommandBuffer cmdBuffer;
+			VK_CHECK_RESULT(ownDevice.allocateCommandBuffers (&cmdBufAllocateInfo, &cmdBuffer));
 
 			// If requested, also start recording for the new command buffer
 			if (begin)
 			{
-				VkCommandBufferBeginInfo cmdBufInfo = vks::initializers::commandBufferBeginInfo();
-				VK_CHECK_RESULT(vkBeginCommandBuffer(cmdBuffer, &cmdBufInfo));
+				vk::CommandBufferBeginInfo cmdBufInfo;
+				cmdBuffer.begin(cmdBufInfo);
 			}
 
 			return cmdBuffer;
