@@ -16,6 +16,7 @@
 #include <assert.h>
 #include <algorithm>
 #include "vulkan/vulkan.h"
+#include <vulkan/vulkan.hpp>
 #include "vksTools.h"
 #include "VulkanBuffer.hpp"
 #include "VulkanInitializers.h"
@@ -202,13 +203,7 @@ namespace vks
 					break;
 				}
 			}
-
-#if defined(__ANDROID__)
-			//todo : Exceptions are disabled by default on Android (need to add LOCAL_CPP_FEATURES += exceptions to Android.mk), so for now just return zero
-			return 0;
-#else
 			throw std::runtime_error("Could not find a matching queue family index");
-#endif
 		}
 
 		/**
@@ -471,14 +466,15 @@ namespace vks
 		*
 		* @return A handle to the created command buffer
 		*/
-		VkCommandPool createCommandPool(uint32_t queueFamilyIndex, VkCommandPoolCreateFlags createFlags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT)
+		VkCommandPool createCommandPool(uint32_t queueFamilyIndex, vk::CommandPoolCreateFlagBits createFlags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer)
 		{
-			VkCommandPoolCreateInfo cmdPoolInfo = {};
-			cmdPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-			cmdPoolInfo.queueFamilyIndex = queueFamilyIndex;
-			cmdPoolInfo.flags = createFlags;
+			vk::CommandPoolCreateInfo cmdPoolInfo;
+			cmdPoolInfo.setQueueFamilyIndex (queueFamilyIndex)
+				.setFlags (createFlags);
+
+
 			VkCommandPool cmdPool;
-			VK_CHECK_RESULT(vkCreateCommandPool(logicalDevice, &cmdPoolInfo, nullptr, &cmdPool));
+			VK_CHECK_RESULT(vkCreateCommandPool(logicalDevice, &(VkCommandPoolCreateInfo)cmdPoolInfo, nullptr, &cmdPool));
 			return cmdPool;
 		}
 

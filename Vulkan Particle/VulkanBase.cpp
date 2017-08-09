@@ -811,11 +811,7 @@ void VulkanExampleBase::keyPressed(uint32_t) {}
 
 void VulkanExampleBase::createCommandPool()
 {
-	VkCommandPoolCreateInfo cmdPoolInfo = {};
-	cmdPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-	cmdPoolInfo.queueFamilyIndex = swapChain.queueNodeIndex;
-	cmdPoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-	VK_CHECK_RESULT(vkCreateCommandPool(device, &cmdPoolInfo, nullptr, &cmdPool));
+	cmdPool = vulkanDevice->createCommandPool (swapChain.queueNodeIndex); //Create graphics command pool
 }
 
 void VulkanExampleBase::setupDepthStencil()

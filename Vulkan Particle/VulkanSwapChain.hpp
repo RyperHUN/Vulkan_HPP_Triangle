@@ -75,7 +75,9 @@ public:
 	uint32_t imageCount;
 	std::vector<VkImage> images;
 	std::vector<SwapChainBuffer> buffers;
-	/** @brief Queue family index of the detected graphics and presenting device queue */
+	/** @brief Queue family index of the detected graphics and presenting device queue
+		A queue family can be: Graphics, Compute , Transfer , Sparse binding
+	*/
 	uint32_t queueNodeIndex = UINT32_MAX;
 
 	/** @brief Creates the platform specific surface abstraction of the native platform window used for presentation */
