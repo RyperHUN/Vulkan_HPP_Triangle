@@ -146,9 +146,8 @@ void VulkanExampleBase::flushCommandBuffer(VkCommandBuffer commandBuffer, VkQueu
 
 void VulkanExampleBase::createPipelineCache()
 {
-	VkPipelineCacheCreateInfo pipelineCacheCreateInfo = {};
-	pipelineCacheCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
-	VK_CHECK_RESULT(vkCreatePipelineCache(vulkanDevice->GetDevice(), &pipelineCacheCreateInfo, nullptr, &pipelineCache));
+	vk::PipelineCacheCreateInfo pipelineCacheCreateInfo = {};
+	pipelineCache = CHECK(vulkanDevice->D().createPipelineCache (pipelineCacheCreateInfo));
 }
 
 void VulkanExampleBase::prepare()
@@ -891,11 +890,11 @@ void VulkanExampleBase::setupRenderPass()
 	
 
 	vk::RenderPassCreateInfo renderPassInfo = {};
-	renderPassInfo.setAttachmentCount (attachments.size())
+	renderPassInfo.setAttachmentCount ((uint32_t)attachments.size())
 		.setPAttachments (attachments.data())
 		.setSubpassCount (1)
 		.setPSubpasses (&subpassDescription)
-		.setDependencyCount (dependencies.size())
+		.setDependencyCount ((uint32_t)dependencies.size())
 		.setPDependencies (dependencies.data());
 
 	renderPass = CHECK(vulkanDevice->D().createRenderPass (renderPassInfo));

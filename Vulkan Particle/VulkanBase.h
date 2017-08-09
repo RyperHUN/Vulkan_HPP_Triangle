@@ -92,7 +92,7 @@ protected:
 	// List of shader modules created (stored for cleanup)
 	std::vector<VkShaderModule> shaderModules;
 	// Pipeline cache object
-	VkPipelineCache pipelineCache;
+	vk::PipelineCache pipelineCache;
 	// Wraps the swap chain to present images (framebuffers) to the windowing system
 	VulkanSwapChain swapChain;
 
