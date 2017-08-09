@@ -443,7 +443,7 @@ public:
 		// Set pipeline stage for this shader
 		shaderStages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
 		// Load binary SPIR-V shader
-		shaderStages[1].module = vks::tools::loadSPIRVShader("shaders/triangle.frag.spv", device);
+		shaderStages[1].module = vks::tools::loadShaderGLSL ("shaders/triangle.frag", device, VK_SHADER_STAGE_FRAGMENT_BIT);
 		// Main entry point for the shader
 		shaderStages[1].pName = "main";
 		assert(shaderStages[1].module != VK_NULL_HANDLE);
