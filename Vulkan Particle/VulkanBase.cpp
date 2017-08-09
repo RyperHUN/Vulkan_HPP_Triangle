@@ -52,7 +52,7 @@ void VulkanExampleBase::createInstance(bool enableValidation)
 
 std::string VulkanExampleBase::getWindowTitle()
 {
-	std::string device(deviceProperties.deviceName);
+	std::string device(vulkanDevice->properties.deviceName);
 	std::string windowTitle;
 	windowTitle = title + " - " + device;
 	///TODO
@@ -373,29 +373,6 @@ VulkanExampleBase::~VulkanExampleBase()
 	//}
 
 	vkDestroyInstance(instance, nullptr);
-
-#if defined(_DIRECT2DISPLAY)
-
-#elif defined(VK_USE_PLATFORM_WAYLAND_KHR)
-	wl_shell_surface_destroy(shell_surface);
-	wl_surface_destroy(surface);
-	if (keyboard)
-		wl_keyboard_destroy(keyboard);
-	if (pointer)
-		wl_pointer_destroy(pointer);
-	wl_seat_destroy(seat);
-	wl_shell_destroy(shell);
-	wl_compositor_destroy(compositor);
-	wl_registry_destroy(registry);
-	wl_display_disconnect(display);
-#elif defined(__linux)
-#if defined(__ANDROID__)
-	// todo : android cleanup (if required)
-#else
-	xcb_destroy_window(connection, window);
-	xcb_disconnect(connection);
-#endif
-#endif
 }
 
 void VulkanExampleBase::initVulkan()
@@ -414,20 +391,8 @@ void VulkanExampleBase::initVulkan()
 		//vks::debug::setupDebugging(instance, debugReportFlags, VK_NULL_HANDLE);
 	}
 
-	// Physical device
-	uint32_t gpuCount = 0;
-	// Get number of available physical devices
-	VK_CHECK_RESULT(vkEnumeratePhysicalDevices(instance, &gpuCount, nullptr));
-	assert(gpuCount > 0);
-	// Enumerate devices
-	std::vector<VkPhysicalDevice> physicalDevices(gpuCount);
-	VkResult err = vkEnumeratePhysicalDevices(instance, &gpuCount, physicalDevices.data());
-	if (err)
-	{
-		vks::tools::exitFatal("Could not enumerate physical devices : \n" + vks::tools::errorString(err), "Fatal error");
-	}
-
-	// GPU selection
+	std::vector<vk::PhysicalDevice> physicalDevices = CHECK(instance.enumeratePhysicalDevices ());
+	size_t gpuCount = physicalDevices.size();
 
 	// Select physical device to be used for the Vulkan example
 	// Defaults to the first device unless specified by command line
@@ -482,11 +447,6 @@ void VulkanExampleBase::initVulkan()
 	}
 
 	physicalDevice = physicalDevices[selectedDevice];
-
-	// Store properties (including limits), features and memory properties of the phyiscal device (so that examples can check against them)
-	vkGetPhysicalDeviceProperties(physicalDevice, &deviceProperties);
-	vkGetPhysicalDeviceFeatures(physicalDevice, &deviceFeatures);
-	vkGetPhysicalDeviceMemoryProperties(physicalDevice, &deviceMemoryProperties);
 
 	// Derived examples can override this to set actual features (based on above readings) to enable for logical device creation
 	getEnabledFeatures();
@@ -841,7 +801,7 @@ void VulkanExampleBase::setupDepthStencil()
 	VK_CHECK_RESULT(vkCreateImage(device, &image, nullptr, &depthStencil.image));
 	vkGetImageMemoryRequirements(device, depthStencil.image, &memReqs);
 	mem_alloc.allocationSize = memReqs.size;
-	mem_alloc.memoryTypeIndex = vulkanDevice->getMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	mem_alloc.memoryTypeIndex = vulkanDevice->getMemoryType(memReqs.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal);
 	VK_CHECK_RESULT(vkAllocateMemory(device, &mem_alloc, nullptr, &depthStencil.mem));
 	VK_CHECK_RESULT(vkBindImageMemory(device, depthStencil.image, depthStencil.mem, 0));
 

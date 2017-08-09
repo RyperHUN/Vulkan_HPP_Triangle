@@ -61,13 +61,7 @@ protected:
 	// Vulkan instance, stores all per-application states
 	vk::Instance instance;
 	// Physical device (GPU) that Vulkan will ise
-	VkPhysicalDevice physicalDevice;
-	// Stores physical device properties (for e.g. checking device limits)
-	VkPhysicalDeviceProperties deviceProperties;
-	// Stores the features available on the selected physical device (for e.g. checking if a feature is available)
-	VkPhysicalDeviceFeatures deviceFeatures;
-	// Stores all available memory (type) properties for the physical device
-	VkPhysicalDeviceMemoryProperties deviceMemoryProperties;
+	vk::PhysicalDevice physicalDevice;
 	/**
 	* Set of physical device features to be enabled for this example (must be set in the derived constructor)
 	*

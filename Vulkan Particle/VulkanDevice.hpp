@@ -31,15 +31,15 @@ namespace vks
 
 
 		/** @brief Physical device representation */
-		VkPhysicalDevice physicalDevice;
+		vk::PhysicalDevice physicalDevice;
 		/** @brief Logical device representation (application's view of the device) */
 		VkDevice logicalDevice;
 		/** @brief Properties of the physical device including limits that the application can check against */
-		VkPhysicalDeviceProperties properties;
+		vk::PhysicalDeviceProperties properties;
 		/** @brief Features of the physical device that an application can use to check if a feature is supported */
-		VkPhysicalDeviceFeatures features;
+		vk::PhysicalDeviceFeatures features;
 		/** @brief Memory types and heaps of the physical device */
-		VkPhysicalDeviceMemoryProperties memoryProperties;
+		vk::PhysicalDeviceMemoryProperties memoryProperties;
 		/** @brief Queue family properties of the physical device */
 		std::vector<VkQueueFamilyProperties> queueFamilyProperties;
 		/** @brief List of extensions supported by the device */
@@ -67,18 +67,15 @@ namespace vks
 		*
 		* @param physicalDevice Physical device that is to be used
 		*/
-		VulkanDevice(VkPhysicalDevice physicalDevice)
+		VulkanDevice(vk::PhysicalDevice physicalDevice)
 		{
 			assert(physicalDevice);
 			this->physicalDevice = physicalDevice;
 
 			// Store Properties features, limits and properties of the physical device for later use
-			// Device properties also contain limits and sparse properties
-			vkGetPhysicalDeviceProperties(physicalDevice, &properties);
-			// Features should be checked by the examples before using them
-			vkGetPhysicalDeviceFeatures(physicalDevice, &features);
-			// Memory properties are used regularly for creating all kinds of buffers
-			vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memoryProperties);
+			properties = physicalDevice.getProperties();
+			features = physicalDevice.getFeatures();
+			memoryProperties = physicalDevice.getMemoryProperties();
 			// Queue family properties, used for setting up requested queues upon device creation
 			uint32_t queueFamilyCount;
 			vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, nullptr);
@@ -130,7 +127,7 @@ namespace vks
 		*
 		* @throw Throws an exception if memTypeFound is null and no memory type could be found that supports the requested properties
 		*/
-		uint32_t getMemoryType(uint32_t typeBits, VkMemoryPropertyFlags properties, VkBool32 *memTypeFound = nullptr)
+		uint32_t getMemoryType(uint32_t typeBits, vk::MemoryPropertyFlags properties, VkBool32 *memTypeFound = nullptr)
 		{
 			for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; i++)
 			{
@@ -325,7 +322,7 @@ namespace vks
 		*
 		* @return VK_SUCCESS if buffer handle and memory have been created and (optionally passed) data has been copied
 		*/
-		VkResult createBuffer(VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags, VkDeviceSize size, VkBuffer *buffer, VkDeviceMemory *memory, void *data = nullptr)
+		VkResult createBuffer(VkBufferUsageFlags usageFlags, vk::MemoryPropertyFlags memoryPropertyFlags, VkDeviceSize size, VkBuffer *buffer, VkDeviceMemory *memory, void *data = nullptr)
 		{
 			// Create the buffer handle
 			VkBufferCreateInfo bufferCreateInfo = vks::initializers::bufferCreateInfo(usageFlags, size);
@@ -348,7 +345,8 @@ namespace vks
 				VK_CHECK_RESULT(vkMapMemory(logicalDevice, *memory, 0, size, 0, &mapped));
 				memcpy(mapped, data, size);
 				// If host coherency hasn't been requested, do a manual flush to make writes visible
-				if ((memoryPropertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) == 0)
+				///TODO Chech if works
+				if ((memoryPropertyFlags & vk::MemoryPropertyFlagBits::eHostCoherent) /*== 0*/)
 				{
 					VkMappedMemoryRange mappedRange = vks::initializers::mappedMemoryRange();
 					mappedRange.memory = *memory;
@@ -376,7 +374,7 @@ namespace vks
 		*
 		* @return VK_SUCCESS if buffer handle and memory have been created and (optionally passed) data has been copied
 		*/
-		VkResult createBuffer(VkBufferUsageFlags usageFlags, VkMemoryPropertyFlags memoryPropertyFlags, vks::Buffer *buffer, VkDeviceSize size, void *data = nullptr)
+		VkResult createBuffer(VkBufferUsageFlags usageFlags, vk::MemoryPropertyFlags memoryPropertyFlags, vks::Buffer *buffer, VkDeviceSize size, void *data = nullptr)
 		{
 			buffer->device = logicalDevice;
 
@@ -396,7 +394,7 @@ namespace vks
 			buffer->alignment = memReqs.alignment;
 			buffer->size = memAlloc.allocationSize;
 			buffer->usageFlags = usageFlags;
-			buffer->memoryPropertyFlags = memoryPropertyFlags;
+			buffer->memoryPropertyFlags = (VkMemoryPropertyFlags)memoryPropertyFlags;
 
 			// If a pointer to the buffer data has been passed, map the buffer and copy over the data
 			if (data != nullptr)
