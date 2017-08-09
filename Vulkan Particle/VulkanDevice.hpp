@@ -96,11 +96,11 @@ namespace vks
 		{
 			if (commandPool)
 			{
-				vkDestroyCommandPool(logicalDevice, commandPool, nullptr);
+				ownDevice.destroyCommandPool (commandPool);
 			}
-			if (logicalDevice)
+			if (ownDevice)
 			{
-				vkDestroyDevice(logicalDevice, nullptr);
+				ownDevice.destroy();
 			}
 		}
 
@@ -307,45 +307,50 @@ namespace vks
 		*
 		* @return VK_SUCCESS if buffer handle and memory have been created and (optionally passed) data has been copied
 		*/
-		VkResult createBuffer(VkBufferUsageFlags usageFlags, vk::MemoryPropertyFlags memoryPropertyFlags, VkDeviceSize size, VkBuffer *buffer, VkDeviceMemory *memory, void *data = nullptr)
+		BuffMem createBuffer(vk::BufferUsageFlags usageFlags, vk::MemoryPropertyFlags memoryPropertyFlags, VkDeviceSize size, void *data = nullptr)
 		{
+			vk::BufferCreateInfo bufferCreateInfo;
+			bufferCreateInfo.setUsage (usageFlags)
+				.setSize (size)
+				.setSharingMode (vk::SharingMode::eExclusive);
 			// Create the buffer handle
-			VkBufferCreateInfo bufferCreateInfo = vks::initializers::bufferCreateInfo(usageFlags, size);
-			bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-			VK_CHECK_RESULT(vkCreateBuffer(logicalDevice, &bufferCreateInfo, nullptr, buffer));
+			vk::Buffer buffer = CHECK(ownDevice.createBuffer (bufferCreateInfo));
 
 			// Create the memory backing up the buffer handle
-			VkMemoryRequirements memReqs;
-			VkMemoryAllocateInfo memAlloc = vks::initializers::memoryAllocateInfo();
-			vkGetBufferMemoryRequirements(this->GetDevice(), *buffer, &memReqs);
-			memAlloc.allocationSize = memReqs.size;
+
+			//VkMemoryRequirements memReqs;
+			//VkMemoryAllocateInfo memAlloc = vks::initializers::memoryAllocateInfo();
+			
+			vk::MemoryRequirements memReqs = ownDevice.getBufferMemoryRequirements (buffer);
+			vk::MemoryAllocateInfo memAlloc;
+			memAlloc.setAllocationSize (memReqs.size);
 			// Find a memory type index that fits the properties of the buffer
 			memAlloc.memoryTypeIndex = getMemoryType(memReqs.memoryTypeBits, memoryPropertyFlags);
-			VK_CHECK_RESULT(vkAllocateMemory(logicalDevice, &memAlloc, nullptr, memory));
+			vk::DeviceMemory memory = CHECK(ownDevice.allocateMemory (memAlloc));
 
 			// If a pointer to the buffer data has been passed, map the buffer and copy over the data
 			if (data != nullptr)
 			{
 				void *mapped;
-				VK_CHECK_RESULT(vkMapMemory(logicalDevice, *memory, 0, size, 0, &mapped));
+				mapped = CHECK(ownDevice.mapMemory (memory, 0, size));
 				memcpy(mapped, data, size);
 				// If host coherency hasn't been requested, do a manual flush to make writes visible
 				///TODO Chech if works
 				if ((memoryPropertyFlags & vk::MemoryPropertyFlagBits::eHostCoherent) /*== 0*/)
 				{
-					VkMappedMemoryRange mappedRange = vks::initializers::mappedMemoryRange();
-					mappedRange.memory = *memory;
-					mappedRange.offset = 0;
-					mappedRange.size = size;
-					vkFlushMappedMemoryRanges(logicalDevice, 1, &mappedRange);
+					vk::MappedMemoryRange mappedRange;
+					mappedRange.setMemory (memory)
+						.setOffset (0)
+						.setSize(size);
+					ownDevice.flushMappedMemoryRanges (mappedRange);
 				}
-				vkUnmapMemory(logicalDevice, *memory);
+				ownDevice.unmapMemory (memory);
 			}
 
+			VK_CHECK_RESULT(ownDevice.bindBufferMemory (buffer, memory, 0));
 			// Attach the memory to the buffer object
-			VK_CHECK_RESULT(vkBindBufferMemory(logicalDevice, *buffer, *memory, 0));
 
-			return VK_SUCCESS;
+			return BuffMem{ buffer, memory };
 		}
 
 		/**

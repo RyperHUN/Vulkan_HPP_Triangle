@@ -17,6 +17,12 @@
 // Default fence timeout in nanoseconds
 #define DEFAULT_FENCE_TIMEOUT 100000000000
 
+struct BuffMem 
+{
+	vk::Buffer buff;
+	vk::DeviceMemory mem;
+};
+
 namespace vks {namespace tools {
 	static inline std::string errorString(VkResult errorCode)
 	{
@@ -56,7 +62,7 @@ namespace vks {namespace tools {
 
 #define VK_CHECK_RESULT(f)																				\
 {																										\
-	VkResult res = (f);																					\
+	VkResult res = (VkResult)(f);																					\
 	if (res != VK_SUCCESS)																				\
 	{																									\
 		std::cout << "Fatal : VkResult is \"" << vks::tools::errorString(res) << "\" in " << __FILE__ << " at line " << __LINE__ << std::endl; \

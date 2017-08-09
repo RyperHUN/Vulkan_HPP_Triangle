@@ -456,8 +456,9 @@ void VulkanExampleBase::initVulkan()
 	// This is handled by a separate class that gets a logical device representation
 	// and encapsulates functions related to a device
 	vulkanDevice = new vks::VulkanDevice(physicalDevice);
-	device = vulkanDevice->GetDevice();
 	vulkanDevice->createLogicalDevice(enabledFeatures, enabledExtensions);
+	device = vulkanDevice->GetDevice();
+	
 
 	// Get a graphics queue from the device
 	queue = vulkanDevice->D().getQueue(vulkanDevice->queueFamilyIndices.graphics, 0);
