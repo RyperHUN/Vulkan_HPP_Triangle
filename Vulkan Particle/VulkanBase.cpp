@@ -327,10 +327,11 @@ VulkanExampleBase::VulkanExampleBase(bool enableValidation)
 
 	// Enable console if validation is active
 	// Debug message callback will output to it
-	if (this->settings.validation)
+	/*if (this->settings.validation)
 	{
-		setupConsole("Vulkan validation output");
-	}
+		
+	}*/
+	setupConsole("Vulkan validation output");
 
 }
 
@@ -455,11 +456,8 @@ void VulkanExampleBase::initVulkan()
 	// This is handled by a separate class that gets a logical device representation
 	// and encapsulates functions related to a device
 	vulkanDevice = new vks::VulkanDevice(physicalDevice);
-	VkResult res = vulkanDevice->createLogicalDevice(enabledFeatures, enabledExtensions);
-	if (res != VK_SUCCESS) {
-		vks::tools::exitFatal("Could not create Vulkan device: \n" + vks::tools::errorString(res), "Fatal error");
-	}
-	device = vulkanDevice->logicalDevice;
+	vulkanDevice->createLogicalDevice(enabledFeatures, enabledExtensions);
+	device = vulkanDevice->logicalDevice; //TODO Replace
 
 	// Get a graphics queue from the device
 	vkGetDeviceQueue(device, vulkanDevice->queueFamilyIndices.graphics, 0, &queue);

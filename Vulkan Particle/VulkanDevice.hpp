@@ -33,7 +33,7 @@ namespace vks
 		/** @brief Physical device representation */
 		vk::PhysicalDevice physicalDevice;
 		/** @brief Logical device representation (application's view of the device) */
-		VkDevice logicalDevice;
+		VkDevice logicalDevice; ///TODO REMOVE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 		/** @brief Properties of the physical device including limits that the application can check against */
 		vk::PhysicalDeviceProperties properties;
 		/** @brief Features of the physical device that an application can use to check if a feature is supported */
@@ -205,7 +205,8 @@ namespace vks
 		*
 		* @return VkResult of the device creation call
 		*/
-		VkResult createLogicalDevice(vk::PhysicalDeviceFeatures enabledFeatures, std::vector<const char*> enabledExtensions, bool useSwapChain = true, VkQueueFlags requestedQueueTypes = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT)
+		void createLogicalDevice(vk::PhysicalDeviceFeatures enabledFeatures, std::vector<const char*> enabledExtensions, 
+			bool useSwapChain = true, vk::QueueFlags requestedQueueTypes = vk::QueueFlagBits::eGraphics | vk::QueueFlagBits::eCompute)
 		{
 			// Desired queues need to be requested upon logical device creation
 			// Due to differing queue family configurations of Vulkan implementations this can be a bit tricky, especially if the application
@@ -215,10 +216,8 @@ namespace vks
 
 			// Get queue family indices for the requested queue family types
 			// Note that the indices may overlap depending on the implementation
-
-
 			// Graphics queue
-			if (requestedQueueTypes & VK_QUEUE_GRAPHICS_BIT)
+			if (requestedQueueTypes & vk::QueueFlagBits::eGraphics)
 			{
 				queueFamilyIndices.graphics = getQueueFamilyIndex(vk::QueueFlagBits::eGraphics);
 				queueCreateInfos.push_back(vks::initializers::deviceQueueInfo (queueFamilyIndices.graphics));
@@ -229,7 +228,7 @@ namespace vks
 			}
 
 			// Dedicated compute queue
-			if (requestedQueueTypes & VK_QUEUE_COMPUTE_BIT)
+			if (requestedQueueTypes & vk::QueueFlagBits::eCompute)
 			{
 				queueFamilyIndices.compute = getQueueFamilyIndex(vk::QueueFlagBits::eCompute);
 				if (queueFamilyIndices.compute != queueFamilyIndices.graphics)
@@ -245,7 +244,7 @@ namespace vks
 			}
 
 			// Dedicated transfer queue
-			if (requestedQueueTypes & VK_QUEUE_TRANSFER_BIT)
+			if (requestedQueueTypes & vk::QueueFlagBits::eTransfer)
 			{
 				queueFamilyIndices.transfer = getQueueFamilyIndex(vk::QueueFlagBits::eTransfer);
 				if ((queueFamilyIndices.transfer != queueFamilyIndices.graphics) && (queueFamilyIndices.transfer != queueFamilyIndices.compute))
@@ -287,17 +286,13 @@ namespace vks
 				deviceCreateInfo.ppEnabledExtensionNames = deviceExtensions.data();
 			}
 
-			VkResult result = vkCreateDevice(physicalDevice, &(VkDeviceCreateInfo)deviceCreateInfo, nullptr, &logicalDevice);
+			ownDevice = CHECK(physicalDevice.createDevice (deviceCreateInfo, nullptr));
 
-			if (result == VK_SUCCESS)
-			{
-				// Create a default command pool for graphics command buffers
-				commandPool = createCommandPool(queueFamilyIndices.graphics);
-			}
+			// Create a default command pool for graphics command buffers
+			commandPool = createCommandPool(queueFamilyIndices.graphics);
 
 			this->enabledFeatures = enabledFeatures;
-
-			return result;
+			logicalDevice = (ownDevice);
 		}
 
 		/**
@@ -447,8 +442,8 @@ namespace vks
 			cmdPoolInfo.setQueueFamilyIndex (queueFamilyIndex)
 				.setFlags (createFlags);
 
-			VkCommandPool cmdPool{};
-			VK_CHECK_RESULT(vkCreateCommandPool(logicalDevice, &(VkCommandPoolCreateInfo)cmdPoolInfo, nullptr, &cmdPool));
+			vk::CommandPool cmdPool{};
+			cmdPool = CHECK(ownDevice.createCommandPool (cmdPoolInfo));
 			return cmdPool;
 		}
 
