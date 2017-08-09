@@ -59,7 +59,7 @@ protected:
 	uint32_t frameCounter = 0;
 	uint32_t lastFPS = 0;
 	// Vulkan instance, stores all per-application states
-	VkInstance instance;
+	vk::Instance instance;
 	// Physical device (GPU) that Vulkan will ise
 	VkPhysicalDevice physicalDevice;
 	// Stores physical device properties (for e.g. checking device limits)
@@ -201,7 +201,7 @@ public:
 	*
 	* @note Virtual, can be overriden by derived example class for custom instance creation
 	*/
-	virtual VkResult createInstance(bool enableValidation);
+	virtual void createInstance(bool enableValidation);
 
 	// Pure virtual render function (override in derived class)
 	virtual void render() = 0;

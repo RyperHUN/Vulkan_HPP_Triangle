@@ -11,7 +11,7 @@
 
 std::vector<const char*> VulkanExampleBase::args;
 
-VkResult VulkanExampleBase::createInstance(bool enableValidation)
+void VulkanExampleBase::createInstance(bool enableValidation)
 {
 	this->settings.validation = enableValidation;
 
@@ -20,20 +20,17 @@ VkResult VulkanExampleBase::createInstance(bool enableValidation)
 	this->settings.validation = true;
 #endif	
 
-	VkApplicationInfo appInfo = {};
-	appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-	appInfo.pApplicationName = name.c_str();
-	appInfo.pEngineName = name.c_str();
-	appInfo.apiVersion = VK_API_VERSION_1_0;
+	vk::ApplicationInfo appInfo;
+	appInfo.setPApplicationName (name.c_str())
+		.setPEngineName (name.c_str())
+		.setApiVersion (VK_API_VERSION_1_0);
 
 	std::vector<const char*> instanceExtensions = { VK_KHR_SURFACE_EXTENSION_NAME };
 
 	// Enable surface extensions depending on os
 	instanceExtensions.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
 
-	VkInstanceCreateInfo instanceCreateInfo = {};
-	instanceCreateInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-	instanceCreateInfo.pNext = NULL;
+	vk::InstanceCreateInfo instanceCreateInfo {};
 	instanceCreateInfo.pApplicationInfo = &appInfo;
 	if (instanceExtensions.size() > 0)
 	{
@@ -42,7 +39,7 @@ VkResult VulkanExampleBase::createInstance(bool enableValidation)
 			instanceExtensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
 		}
 		instanceCreateInfo.enabledExtensionCount = (uint32_t)instanceExtensions.size();
-		instanceCreateInfo.ppEnabledExtensionNames = instanceExtensions.data();
+		instanceCreateInfo.setPpEnabledExtensionNames(instanceExtensions.data());
 	}
 	///TODO
 	//if (settings.validation)
@@ -50,7 +47,8 @@ VkResult VulkanExampleBase::createInstance(bool enableValidation)
 	//	instanceCreateInfo.enabledLayerCount = vks::debug::validationLayerCount;
 	//	instanceCreateInfo.ppEnabledLayerNames = vks::debug::validationLayerNames;
 	//}
-	return vkCreateInstance(&instanceCreateInfo, nullptr, &instance);
+	instance = vk::createInstance (instanceCreateInfo, nullptr);
+	//return vkCreateInstance(&instanceCreateInfo, nullptr, &instance);
 }
 
 std::string VulkanExampleBase::getWindowTitle()
@@ -403,10 +401,11 @@ VulkanExampleBase::~VulkanExampleBase()
 
 void VulkanExampleBase::initVulkan()
 {
-	VkResult err;
+	VkResult err = VkResult::VK_SUCCESS;
 
 	// Vulkan instance
-	err = createInstance(settings.validation);
+	///TODO
+	createInstance(settings.validation);
 	if (err)
 	{
 		vks::tools::exitFatal("Could not create Vulkan instance : \n" + vks::tools::errorString(err), "Fatal error");
