@@ -305,50 +305,6 @@ public:
 		vkUnmapMemory(device, uniformBufferVS.memory);
 	}
 
-	// Vulkan loads it's shaders from an immediate binary representation called SPIR-V
-	// Shaders are compiled offline from e.g. GLSL using the reference glslang compiler
-	// This function loads such a shader from a binary file and returns a shader module structure
-	VkShaderModule loadSPIRVShader(std::string filename)
-	{
-		size_t shaderSize;
-		char* shaderCode;
-
-
-		std::ifstream is(filename, std::ios::binary | std::ios::in | std::ios::ate);
-
-		if (is.is_open())
-		{
-			shaderSize = is.tellg();
-			is.seekg(0, std::ios::beg);
-			// Copy file contents into a buffer
-			shaderCode = new char[shaderSize];
-			is.read(shaderCode, shaderSize);
-			is.close();
-			assert(shaderSize > 0);
-		}
-
-		if (shaderCode)
-		{
-			// Create a new shader module that will be used for pipeline creation
-			VkShaderModuleCreateInfo moduleCreateInfo{};
-			moduleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-			moduleCreateInfo.codeSize = shaderSize;
-			moduleCreateInfo.pCode = (uint32_t*)shaderCode;
-
-			VkShaderModule shaderModule;
-			VK_CHECK_RESULT(vkCreateShaderModule(device, &moduleCreateInfo, NULL, &shaderModule));
-
-			delete[] shaderCode;
-
-			return shaderModule;
-		}
-		else
-		{
-			std::cerr << "Error: Could not open shader file \"" << filename << "\"" << std::endl;
-			return VK_NULL_HANDLE;
-		}
-	}
-
 	void preparePipelines()
 	{
 		// Create the graphics pipeline used in this example
@@ -477,7 +433,7 @@ public:
 		shaderStages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
 		// Load binary SPIR-V shader
 		//shaderStages[0].module = vks::tools::loadShaderGLSL("shaders/triangle.vert",device, VK_SHADER_STAGE_VERTEX_BIT);
-		shaderStages[0].module = loadSPIRVShader ("shaders/triangle.vert.spv");
+		shaderStages[0].module = vks::tools::loadSPIRVShader ("shaders/triangle.vert.spv", device);
 		// Main entry point for the shader
 		shaderStages[0].pName = "main";
 		assert(shaderStages[0].module != VK_NULL_HANDLE);
@@ -487,7 +443,7 @@ public:
 		// Set pipeline stage for this shader
 		shaderStages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
 		// Load binary SPIR-V shader
-		shaderStages[1].module = loadSPIRVShader("shaders/triangle.frag.spv");
+		shaderStages[1].module = vks::tools::loadSPIRVShader("shaders/triangle.frag.spv", device);
 		// Main entry point for the shader
 		shaderStages[1].pName = "main";
 		assert(shaderStages[1].module != VK_NULL_HANDLE);
