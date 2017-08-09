@@ -74,7 +74,7 @@ bool VulkanExampleBase::checkCommandBuffers()
 {
 	for (auto& cmdBuffer : drawCmdBuffers)
 	{
-		if (cmdBuffer == VK_NULL_HANDLE)
+		if (!cmdBuffer)
 		{
 			return false;
 		}
@@ -85,20 +85,18 @@ bool VulkanExampleBase::checkCommandBuffers()
 void VulkanExampleBase::createCommandBuffers()
 {
 	// Create one command buffer for each swap chain image and reuse for rendering
-	drawCmdBuffers.resize(swapChain.imageCount);
 
-	VkCommandBufferAllocateInfo cmdBufAllocateInfo =
-		vks::initializers::commandBufferAllocateInfo(
-			cmdPool,
-			VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-			static_cast<uint32_t>(drawCmdBuffers.size()));
+	vk::CommandBufferAllocateInfo cmdBufAllocateInfo;
+	cmdBufAllocateInfo.setCommandPool (cmdPool)
+		.setLevel (vk::CommandBufferLevel::ePrimary)
+		.setCommandBufferCount (swapChain.imageCount);
 
-	VK_CHECK_RESULT(vkAllocateCommandBuffers(vulkanDevice->GetDevice(), &cmdBufAllocateInfo, drawCmdBuffers.data()));
+	drawCmdBuffers = CHECK(vulkanDevice->D().allocateCommandBuffers (cmdBufAllocateInfo));
 }
 
 void VulkanExampleBase::destroyCommandBuffers()
 {
-	vkFreeCommandBuffers(vulkanDevice->GetDevice(), cmdPool, static_cast<uint32_t>(drawCmdBuffers.size()), drawCmdBuffers.data());
+	vulkanDevice->D().freeCommandBuffers (cmdPool, drawCmdBuffers);
 }
 
 VkCommandBuffer VulkanExampleBase::createCommandBuffer(VkCommandBufferLevel level, bool begin)

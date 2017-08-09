@@ -84,8 +84,8 @@ public:
 
 	// Semaphores
 	// Used to coordinate operations within the graphics queue and ensure correct command ordering
-	VkSemaphore presentCompleteSemaphore;
-	VkSemaphore renderCompleteSemaphore;
+	vk::Semaphore presentCompleteSemaphore;
+	vk::Semaphore renderCompleteSemaphore;
 
 	// Fences
 	// Used to check the completion of queue operations (e.g. command buffer execution)
@@ -130,25 +130,22 @@ public:
 	void prepareSynchronizationPrimitives()
 	{
 		// Semaphores (Used for correct command ordering)
-		VkSemaphoreCreateInfo semaphoreCreateInfo = {};
-		semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-		semaphoreCreateInfo.pNext = nullptr;
+		vk::SemaphoreCreateInfo semaphoreCreateInfo = {};
 
 		// Semaphore used to ensures that image presentation is complete before starting to submit again
-		VK_CHECK_RESULT(vkCreateSemaphore(vulkanDevice->GetDevice(), &semaphoreCreateInfo, nullptr, &presentCompleteSemaphore));
+		presentCompleteSemaphore = CHECK(vulkanDevice->D().createSemaphore (semaphoreCreateInfo));
 
 		// Semaphore used to ensures that all commands submitted have been finished before submitting the image to the queue
-		VK_CHECK_RESULT(vkCreateSemaphore(vulkanDevice->GetDevice(), &semaphoreCreateInfo, nullptr, &renderCompleteSemaphore));
+		renderCompleteSemaphore  = CHECK(vulkanDevice->D().createSemaphore(semaphoreCreateInfo));
 
 		// Fences (Used to check draw command buffer completion)
-		VkFenceCreateInfo fenceCreateInfo = {};
-		fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+		vk::FenceCreateInfo fenceCreateInfo;
 		// Create in signaled state so we don't wait on first render of each command buffer
-		fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+		fenceCreateInfo.flags = vk::FenceCreateFlagBits::eSignaled;
 		waitFences.resize(drawCmdBuffers.size());
 		for (auto& fence : waitFences)
 		{
-			VK_CHECK_RESULT(vkCreateFence(vulkanDevice->GetDevice(), &fenceCreateInfo, nullptr, &fence));
+			fence = CHECK(vulkanDevice->D().createFence (fenceCreateInfo));
 		}
 	}
 
@@ -634,20 +631,20 @@ public:
 		VK_CHECK_RESULT(vkResetFences(device, 1, &waitFences[currentBuffer]));
 
 		// Pipeline stage at which the queue submission will wait (via pWaitSemaphores)
-		VkPipelineStageFlags waitStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		
+		vk::PipelineStageFlags waitStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
 		// The submit info structure specifices a command buffer queue submission batch
-		VkSubmitInfo submitInfo = {};
-		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		submitInfo.pWaitDstStageMask = &waitStageMask;									// Pointer to the list of pipeline stages that the semaphore waits will occur at
-		submitInfo.pWaitSemaphores = &presentCompleteSemaphore;							// Semaphore(s) to wait upon before the submitted command buffer starts executing
-		submitInfo.waitSemaphoreCount = 1;												// One wait semaphore																				
-		submitInfo.pSignalSemaphores = &renderCompleteSemaphore;						// Semaphore(s) to be signaled when command buffers have completed
-		submitInfo.signalSemaphoreCount = 1;											// One signal semaphore
-		submitInfo.pCommandBuffers = &drawCmdBuffers[currentBuffer];					// Command buffers(s) to execute in this batch (submission)
-		submitInfo.commandBufferCount = 1;												// One command buffer
+		vk::SubmitInfo submitInfo;												
+		submitInfo.setPWaitDstStageMask (&waitStageMask)			// Pointer to the list of pipeline stages that the semaphore waits will occur at
+			.setPWaitSemaphores (&presentCompleteSemaphore)			// Semaphore(s) to wait upon before the submitted command buffer starts executing
+			.setWaitSemaphoreCount (1)
+			.setPSignalSemaphores (&renderCompleteSemaphore)		// Semaphore(s) to be signaled when command buffers have completed
+			.setSignalSemaphoreCount (1)
+			.setPCommandBuffers (&drawCmdBuffers[currentBuffer])	// Command buffers(s) to execute in this batch (submission)
+			.setCommandBufferCount (1);
 
-																						// Submit to the graphics queue passing a wait fence
-		VK_CHECK_RESULT(vkQueueSubmit(queue, 1, &submitInfo, waitFences[currentBuffer]));
+		VK_CHECK_RESULT(queue.submit (submitInfo, waitFences[currentBuffer]));	// Submit to the graphics queue passing a wait fence
+																						
 
 		// Present the current buffer to the swap chain
 		// Pass the semaphore signaled by the command buffer submission from the submit info as the wait semaphore for swap chain presentation
