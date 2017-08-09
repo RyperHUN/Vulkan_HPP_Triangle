@@ -23,8 +23,8 @@ public:
 
 	// Vertex buffer and attributes
 	struct {
-		VkDeviceMemory memory;															// Handle to the device memory for this buffer
-		VkBuffer buffer;																// Handle to the Vulkan buffer object that the memory is bound to
+		vk::DeviceMemory memory;															// Handle to the device memory for this buffer
+		vk::Buffer buffer;																// Handle to the Vulkan buffer object that the memory is bound to
 	} vertices;
 
 	// Index buffer
@@ -160,23 +160,10 @@ public:
 			// Don't use staging
 			// Create host-visible buffers only and use these for rendering. This is not advised and will usually result in lower rendering performance
 
-			// Vertex buffer
-			VkBufferCreateInfo vertexBufferInfo = {};
-			vertexBufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-			vertexBufferInfo.size = vertexBufferSize;
-			vertexBufferInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-
-			// Copy vertex data to a buffer visible to the host
-			VK_CHECK_RESULT(vkCreateBuffer(device, &vertexBufferInfo, nullptr, &vertices.buffer));
-			vkGetBufferMemoryRequirements(device, vertices.buffer, &memReqs);
-			memAlloc.allocationSize = memReqs.size;
-			// VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT is host visible memory, and VK_MEMORY_PROPERTY_HOST_COHERENT_BIT makes sure writes are directly visible
-			memAlloc.memoryTypeIndex = vulkanDevice->getMemoryType(memReqs.memoryTypeBits, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-			VK_CHECK_RESULT(vkAllocateMemory(device, &memAlloc, nullptr, &vertices.memory));
-			VK_CHECK_RESULT(vkMapMemory(device, vertices.memory, 0, memAlloc.allocationSize, 0, &data));
-			memcpy(data, vertexBuffer.data(), vertexBufferSize);
-			vkUnmapMemory(device, vertices.memory);
-			VK_CHECK_RESULT(vkBindBufferMemory(device, vertices.buffer, vertices.memory, 0));
+			BuffMem vertexBuff = vulkanDevice->createBuffer (vk::BufferUsageFlagBits::eVertexBuffer, 
+				vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, vertexBufferSize, vertexBuffer.data());
+			vertices.buffer = vertexBuff.buff;
+			vertices.memory = vertexBuff.mem;
 
 			// Index buffer
 			VkBufferCreateInfo indexbufferInfo = {};
@@ -484,19 +471,14 @@ public:
 
 	void buildCommandBuffers() override
 	{
-		VkCommandBufferBeginInfo cmdBufInfo = {};
-		cmdBufInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-		cmdBufInfo.pNext = nullptr;
 
 		// Set clear values for all framebuffer attachments with loadOp set to clear
 		// We use two attachments (color and depth) that are cleared at the start of the subpass and as such we need to set clear values for both
-		VkClearValue clearValues[2];
-		clearValues[0].color = { { 0.0f, 0.0f, 0.2f, 1.0f } };
+		vk::ClearValue clearValues[2];
+		clearValues[0].color = std::array<float, 4>{ { 0.0f, 0.0f, 0.2f, 1.0f } };
 		clearValues[1].depthStencil = { 1.0f, 0 };
 
-		VkRenderPassBeginInfo renderPassBeginInfo = {};
-		renderPassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		renderPassBeginInfo.pNext = nullptr;
+		vk::RenderPassBeginInfo renderPassBeginInfo = {};
 		renderPassBeginInfo.renderPass = renderPass;
 		renderPassBeginInfo.renderArea.offset.x = 0;
 		renderPassBeginInfo.renderArea.offset.y = 0;
@@ -504,44 +486,45 @@ public:
 		renderPassBeginInfo.renderArea.extent.height = height;
 		renderPassBeginInfo.clearValueCount = 2;
 		renderPassBeginInfo.pClearValues = clearValues;
+		renderPassBeginInfo.setRenderPass	((vk::RenderPass)renderPass)
+			.setRenderArea					(vk::Rect2D(vk::Offset2D (0, 0), vk::Extent2D (width,height)))
+			.setClearValueCount				(2)
+			.setPClearValues				(clearValues);
 
+		vk::CommandBufferBeginInfo cmdBufInfo = {};
 		for (int32_t i = 0; i < drawCmdBuffers.size(); ++i)
 		{
 			// Set target frame buffer
-			renderPassBeginInfo.framebuffer = frameBuffers[i];
+			renderPassBeginInfo.setFramebuffer(frameBuffers[i]);
 
-			VK_CHECK_RESULT(vkBeginCommandBuffer(drawCmdBuffers[i], &cmdBufInfo));
-
+			VK_CHECK_RESULT(drawCmdBuffers[i].begin (cmdBufInfo));
+			
 			// Start the first sub pass specified in our default render pass setup by the base class
 			// This will clear the color and depth attachment
-			vkCmdBeginRenderPass(drawCmdBuffers[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+			drawCmdBuffers[i].beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
 
 			// Update dynamic viewport state
-			VkViewport viewport = {};
-			viewport.height = (float)height;
-			viewport.width = (float)width;
-			viewport.minDepth = (float) 0.0f;
-			viewport.maxDepth = (float) 1.0f;
-			vkCmdSetViewport(drawCmdBuffers[i], 0, 1, &viewport);
+			vk::Viewport viewport {0, 0, (float)width, (float)height};
+			viewport.setMaxDepth (1.0f)
+					.setMinDepth (0.0f);
+		
+			drawCmdBuffers[i].setViewport(0, { viewport });
 
 			// Update dynamic scissor state
-			VkRect2D scissor = {};
-			scissor.extent.width = width;
-			scissor.extent.height = height;
-			scissor.offset.x = 0;
-			scissor.offset.y = 0;
-			vkCmdSetScissor(drawCmdBuffers[i], 0, 1, &scissor);
+			vk::Rect2D scissor {{0,0}, {width, height}};
+			drawCmdBuffers[i].setScissor (0, {scissor});
 
 			// Bind descriptor sets describing shader binding points
 			vkCmdBindDescriptorSets(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
+			//drawCmdBuffers[i].bindDescriptorSets (vk::PipelineBindPoint::eGraphics, pipelineLayout, 0, descriptorSet, {});
+			///TODO Pipeline layout
 
 			// Bind the rendering pipeline
 			// The pipeline (state object) contains all states of the rendering pipeline, binding it will set all the states specified at pipeline creation time
-			vkCmdBindPipeline(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+			drawCmdBuffers[i].bindPipeline (vk::PipelineBindPoint::eGraphics, pipeline);
 
 			// Bind triangle vertex buffer (contains position and colors)
-			VkDeviceSize offsets[1] = { 0 };
-			vkCmdBindVertexBuffers(drawCmdBuffers[i], 0, 1, &vertices.buffer, offsets);
+			drawCmdBuffers[i].bindVertexBuffers (0, vertices.buffer, {0});
 
 			// Bind triangle index buffer
 			vkCmdBindIndexBuffer(drawCmdBuffers[i], indices.buffer, 0, VK_INDEX_TYPE_UINT32);
@@ -554,7 +537,7 @@ public:
 			// Ending the render pass will add an implicit barrier transitioning the frame buffer color attachment to 
 			// VK_IMAGE_LAYOUT_PRESENT_SRC_KHR for presenting it to the windowing system
 
-			VK_CHECK_RESULT(vkEndCommandBuffer(drawCmdBuffers[i]));
+			VK_CHECK_RESULT(drawCmdBuffers[i].end());
 		}
 	}
 
