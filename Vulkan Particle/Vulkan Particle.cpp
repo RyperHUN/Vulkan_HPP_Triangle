@@ -39,7 +39,7 @@ public:
 	struct {
 		VkDeviceMemory memory;
 		VkBuffer buffer;
-		VkDescriptorBufferInfo descriptor;
+		vk::DescriptorBufferInfo descriptor;
 	}  uniformBufferVS;
 
 	// For simplicity we use the same uniform block layout as in the shader:
@@ -72,7 +72,7 @@ public:
 
 	// The descriptor set layout describes the shader binding layout (without actually referencing descriptor)
 	// Like the pipeline layout it's pretty much a blueprint and can be used with different descriptor sets as long as their layout matches
-	VkDescriptorSetLayout descriptorSetLayout;
+	vk::DescriptorSetLayout descriptorSetLayout;
 
 	// The descriptor set stores the resources bound to the binding points in a shader
 	// It connects the binding points of the different shaders with the buffers and images used for those bindings
@@ -457,58 +457,51 @@ public:
 		// So every shader binding should map to one descriptor set layout binding!!!!!!!!!!!
 
 		// Binding 0: Uniform buffer (Vertex shader)
-		VkDescriptorSetLayoutBinding layoutBinding = {};
-		layoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		layoutBinding.descriptorCount = 1;
-		layoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-		layoutBinding.pImmutableSamplers = nullptr;
+		vk::DescriptorSetLayoutBinding layoutBinding;
+		layoutBinding.setDescriptorType (vk::DescriptorType::eUniformBuffer)
+			.setDescriptorCount			(1)
+			.setStageFlags				(vk::ShaderStageFlagBits::eVertex)
+			.setPImmutableSamplers		(nullptr);
 
-		VkDescriptorSetLayoutCreateInfo descriptorLayout = {};
-		descriptorLayout.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-		descriptorLayout.pNext = nullptr;
-		descriptorLayout.bindingCount = 1;
-		descriptorLayout.pBindings = &layoutBinding;
+		vk::DescriptorSetLayoutCreateInfo descriptorLayout = {};
+		descriptorLayout.setBindingCount	(1)
+			.setPBindings					(&layoutBinding);
 
-		VK_CHECK_RESULT(vkCreateDescriptorSetLayout(device, &descriptorLayout, nullptr, &descriptorSetLayout));
+		descriptorSetLayout = CHECK(vulkanDevice->D().createDescriptorSetLayout (descriptorLayout));
 
 		// Create the pipeline layout that is used to generate the rendering pipelines that are based on this descriptor set layout
 		// In a more complex scenario you would have different pipeline layouts for different descriptor set layouts that could be reused
-		VkPipelineLayoutCreateInfo pPipelineLayoutCreateInfo = {};
-		pPipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-		pPipelineLayoutCreateInfo.pNext = nullptr;
-		pPipelineLayoutCreateInfo.setLayoutCount = 1;
-		pPipelineLayoutCreateInfo.pSetLayouts = &descriptorSetLayout;
+		vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo;
+		pipelineLayoutCreateInfo.setSetLayoutCount (1)
+			.setPSetLayouts (&descriptorSetLayout);
 
-		VK_CHECK_RESULT(vkCreatePipelineLayout(device, &pPipelineLayoutCreateInfo, nullptr, &pipelineLayout));
+		pipelineLayout = CHECK(vulkanDevice->D().createPipelineLayout (pipelineLayoutCreateInfo));
 	}
 
 	void setupDescriptorSet()
 	{
 		// Allocate a new descriptor set from the global descriptor pool
-		VkDescriptorSetAllocateInfo allocInfo = {};
-		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-		allocInfo.descriptorPool = descriptorPool;
-		allocInfo.descriptorSetCount = 1;
-		allocInfo.pSetLayouts = &descriptorSetLayout;
+		vk::DescriptorSetAllocateInfo allocInfo = {};
+		allocInfo.setDescriptorPool (descriptorPool)
+			.setDescriptorSetCount	(1)
+			.setPSetLayouts			(&descriptorSetLayout);
 
-		VK_CHECK_RESULT(vkAllocateDescriptorSets(device, &allocInfo, &descriptorSet));
+		descriptorSet = CHECK(vulkanDevice->D().allocateDescriptorSets (allocInfo)).front();
 
 		// Update the descriptor set determining the shader binding points
 		// For every binding point used in a shader there needs to be one
 		// descriptor set matching that binding point
 
-		VkWriteDescriptorSet writeDescriptorSet = {};
+		vk::WriteDescriptorSet writeDescriptorSet = {};
 
 		// Binding 0 : Uniform buffer
-		writeDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		writeDescriptorSet.dstSet = descriptorSet;
-		writeDescriptorSet.descriptorCount = 1;
-		writeDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		writeDescriptorSet.pBufferInfo = &uniformBufferVS.descriptor;
-		// Binds this uniform buffer to binding point 0
-		writeDescriptorSet.dstBinding = 0;
+		writeDescriptorSet.dstBinding = 0; // Binds this uniform buffer to binding point 0
+		writeDescriptorSet.setDstSet	(descriptorSet)
+			.setDescriptorCount			(1)
+			.setDescriptorType			(vk::DescriptorType::eUniformBuffer)
+			.setPBufferInfo				(&uniformBufferVS.descriptor);
 
-		vkUpdateDescriptorSets(device, 1, &writeDescriptorSet, 0, nullptr);
+		vulkanDevice->D().updateDescriptorSets ({writeDescriptorSet}, {});
 	}
 
 	void buildCommandBuffers() override
