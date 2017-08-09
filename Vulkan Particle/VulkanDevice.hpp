@@ -25,7 +25,7 @@ namespace vks
 {
 	struct VulkanDevice
 	{
-		vk::Device ownDevice; ///TODO
+		vk::Device ownDevice;
 		/** @brief Features that have been enabled for use on the physical device */
 		vk::PhysicalDeviceFeatures enabledFeatures;
 
@@ -41,7 +41,7 @@ namespace vks
 		/** @brief Memory types and heaps of the physical device */
 		vk::PhysicalDeviceMemoryProperties memoryProperties;
 		/** @brief Queue family properties of the physical device */
-		std::vector<VkQueueFamilyProperties> queueFamilyProperties;
+		std::vector<vk::QueueFamilyProperties> queueFamilyProperties;
 		/** @brief List of extensions supported by the device */
 		std::vector<std::string> supportedExtensions;
 
@@ -60,7 +60,7 @@ namespace vks
 		} queueFamilyIndices;
 
 		/**  @brief Typecast to VkDevice */
-		operator VkDevice() { return logicalDevice; };
+		operator vk::Device() { return logicalDevice; };
 
 		/**
 		* Default constructor
@@ -77,25 +77,13 @@ namespace vks
 			features = physicalDevice.getFeatures();
 			memoryProperties = physicalDevice.getMemoryProperties();
 			// Queue family properties, used for setting up requested queues upon device creation
-			uint32_t queueFamilyCount;
-			vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, nullptr);
-			assert(queueFamilyCount > 0);
-			queueFamilyProperties.resize(queueFamilyCount);
-			vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, queueFamilyProperties.data());
+			queueFamilyProperties = physicalDevice.getQueueFamilyProperties ();
+			assert(queueFamilyProperties.size() > 0);
 
-			// Get list of supported extensions
-			uint32_t extCount = 0;
-			vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extCount, nullptr);
-			if (extCount > 0)
+			std::vector<vk::ExtensionProperties> extensions = CHECK(physicalDevice.enumerateDeviceExtensionProperties ());
+			for (auto ext : extensions)
 			{
-				std::vector<VkExtensionProperties> extensions(extCount);
-				if (vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &extCount, &extensions.front()) == VK_SUCCESS)
-				{
-					for (auto ext : extensions)
-					{
-						supportedExtensions.push_back(ext.extensionName);
-					}
-				}
+				supportedExtensions.push_back(ext.extensionName);
 			}
 		}
 
@@ -164,16 +152,16 @@ namespace vks
 		*
 		* @throw Throws an exception if no queue family index could be found that supports the requested flags
 		*/
-		uint32_t getQueueFamilyIndex(VkQueueFlagBits queueFlags)
+		uint32_t getQueueFamilyIndex(vk::QueueFlags queueFlags)
 		{
 			// Dedicated queue for compute
 			// Try to find a queue family index that supports compute but not graphics
-			if (queueFlags & VK_QUEUE_COMPUTE_BIT)
+			if (queueFlags & vk::QueueFlagBits::eCompute)
 			{
 				for (uint32_t i = 0; i < static_cast<uint32_t>(queueFamilyProperties.size()); i++)
 				{
-					if ((queueFamilyProperties[i].queueFlags & queueFlags) && ((queueFamilyProperties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0))
-					{
+					if ((queueFamilyProperties[i].queueFlags & queueFlags) && ((queueFamilyProperties[i].queueFlags & vk::QueueFlagBits::eGraphics) /*== 0*/))
+					{ 
 						return i;
 						break;
 					}
@@ -182,11 +170,13 @@ namespace vks
 
 			// Dedicated queue for transfer
 			// Try to find a queue family index that supports transfer but not graphics and compute
-			if (queueFlags & VK_QUEUE_TRANSFER_BIT)
+			if (queueFlags & vk::QueueFlagBits::eTransfer)
 			{
 				for (uint32_t i = 0; i < static_cast<uint32_t>(queueFamilyProperties.size()); i++)
 				{
-					if ((queueFamilyProperties[i].queueFlags & queueFlags) && ((queueFamilyProperties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0) && ((queueFamilyProperties[i].queueFlags & VK_QUEUE_COMPUTE_BIT) == 0))
+					if ((queueFamilyProperties[i].queueFlags & queueFlags) && 
+						((queueFamilyProperties[i].queueFlags & vk::QueueFlagBits::eGraphics) /*== 0*/) && 
+						((queueFamilyProperties[i].queueFlags & vk::QueueFlagBits::eCompute) /*== 0*/))
 					{
 						return i;
 						break;
@@ -230,7 +220,7 @@ namespace vks
 			// Graphics queue
 			if (requestedQueueTypes & VK_QUEUE_GRAPHICS_BIT)
 			{
-				queueFamilyIndices.graphics = getQueueFamilyIndex(VK_QUEUE_GRAPHICS_BIT);
+				queueFamilyIndices.graphics = getQueueFamilyIndex(vk::QueueFlagBits::eGraphics);
 				queueCreateInfos.push_back(vks::initializers::deviceQueueInfo (queueFamilyIndices.graphics));
 			}
 			else
@@ -241,7 +231,7 @@ namespace vks
 			// Dedicated compute queue
 			if (requestedQueueTypes & VK_QUEUE_COMPUTE_BIT)
 			{
-				queueFamilyIndices.compute = getQueueFamilyIndex(VK_QUEUE_COMPUTE_BIT);
+				queueFamilyIndices.compute = getQueueFamilyIndex(vk::QueueFlagBits::eCompute);
 				if (queueFamilyIndices.compute != queueFamilyIndices.graphics)
 				{
 					// If compute family index differs, we need an additional queue create info for the compute queue
@@ -257,7 +247,7 @@ namespace vks
 			// Dedicated transfer queue
 			if (requestedQueueTypes & VK_QUEUE_TRANSFER_BIT)
 			{
-				queueFamilyIndices.transfer = getQueueFamilyIndex(VK_QUEUE_TRANSFER_BIT);
+				queueFamilyIndices.transfer = getQueueFamilyIndex(vk::QueueFlagBits::eTransfer);
 				if ((queueFamilyIndices.transfer != queueFamilyIndices.graphics) && (queueFamilyIndices.transfer != queueFamilyIndices.compute))
 				{
 					// If compute family index differs, we need an additional queue create info for the compute queue
