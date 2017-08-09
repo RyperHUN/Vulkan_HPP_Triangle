@@ -270,9 +270,12 @@ void VulkanExampleBase::prepareFrame()
 
 void VulkanExampleBase::submitFrame()
 {
+	// Present the current buffer to the swap chain
+	// Pass the semaphore signaled by the command buffer submission from the submit info as the wait semaphore for swap chain presentation
+	// This ensures that the image is not presented to the windowing system until all commands have been submitted
 	VK_CHECK_RESULT(swapChain.queuePresent(queue, currentBuffer, semaphores.renderComplete));
 
-	VK_CHECK_RESULT(vkQueueWaitIdle(queue));
+	//VK_CHECK_RESULT(queue.waitIdle ()); //is equivalent to submitting a fence to a queue and waiting with an infinite timeout for that fence to signal.
 }
 
 VulkanExampleBase::VulkanExampleBase(bool enableValidation)
@@ -362,7 +365,6 @@ VulkanExampleBase::~VulkanExampleBase()
 
 	vkDestroySemaphore(vulkanDevice->GetDevice(), semaphores.presentComplete, nullptr);
 	vkDestroySemaphore(vulkanDevice->GetDevice(), semaphores.renderComplete, nullptr);
-	vkDestroySemaphore(vulkanDevice->GetDevice(), semaphores.textOverlayComplete, nullptr);
 
 	delete vulkanDevice;
 
@@ -474,20 +476,14 @@ void VulkanExampleBase::initVulkan()
 	// Create a semaphore used to synchronize command submission
 	// Ensures that the image is not presented until all commands have been sumbitted and executed
 	semaphores.renderComplete = CHECK(vulkanDevice->D().createSemaphore(semaphoreCreateInfo, nullptr));
-	// Create a semaphore used to synchronize command submission
-	// Ensures that the image is not presented until all commands for the text overlay have been sumbitted and executed
-	// Will be inserted after the render complete semaphore if the text overlay is enabled
-	semaphores.textOverlayComplete = CHECK(vulkanDevice->D().createSemaphore(semaphoreCreateInfo, nullptr));
 
 	// Set up submit info structure
 	// Semaphores will stay the same during application lifetime
 	// Command buffer submission info is set by each example
-	submitInfo = vks::initializers::submitInfo();
-	submitInfo.pWaitDstStageMask = &submitPipelineStages;
-	submitInfo.waitSemaphoreCount = 1;
-	submitInfo.pWaitSemaphores = &semaphores.presentComplete;
-	submitInfo.signalSemaphoreCount = 1;
-	submitInfo.pSignalSemaphores = &semaphores.renderComplete;
+	submitInfo.setPWaitSemaphores(&semaphores.presentComplete)			// Semaphore(s) to wait upon before the submitted command buffer starts executing
+		.setWaitSemaphoreCount(1)
+		.setPSignalSemaphores(&semaphores.renderComplete)		// Semaphore(s) to be signaled when command buffers have completed
+		.setSignalSemaphoreCount(1);
 }
 
 // Win32 : Sets up a console window and redirects standard output to it

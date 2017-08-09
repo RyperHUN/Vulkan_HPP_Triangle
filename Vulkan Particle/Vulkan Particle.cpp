@@ -78,14 +78,7 @@ public:
 	// It connects the binding points of the different shaders with the buffers and images used for those bindings
 	VkDescriptorSet descriptorSet;
 
-
 	// Synchronization primitives
-	// Synchronization is an important concept of Vulkan that OpenGL mostly hid away. Getting this right is crucial to using Vulkan.
-
-	// Semaphores
-	// Used to coordinate operations within the graphics queue and ensure correct command ordering
-	vk::Semaphore presentCompleteSemaphore;
-	vk::Semaphore renderCompleteSemaphore;
 
 	// Fences
 	// Used to check the completion of queue operations (e.g. command buffer execution)
@@ -117,9 +110,6 @@ public:
 		vkDestroyBuffer(device, uniformBufferVS.buffer, nullptr);
 		vkFreeMemory(device, uniformBufferVS.memory, nullptr);
 
-		vkDestroySemaphore(device, presentCompleteSemaphore, nullptr);
-		vkDestroySemaphore(device, renderCompleteSemaphore, nullptr);
-
 		for (auto& fence : waitFences)
 		{
 			vkDestroyFence(device, fence, nullptr);
@@ -129,15 +119,6 @@ public:
 	// Create the Vulkan synchronization primitives used in this example
 	void prepareSynchronizationPrimitives()
 	{
-		// Semaphores (Used for correct command ordering)
-		vk::SemaphoreCreateInfo semaphoreCreateInfo = {};
-
-		// Semaphore used to ensures that image presentation is complete before starting to submit again
-		presentCompleteSemaphore = CHECK(vulkanDevice->D().createSemaphore (semaphoreCreateInfo));
-
-		// Semaphore used to ensures that all commands submitted have been finished before submitting the image to the queue
-		renderCompleteSemaphore  = CHECK(vulkanDevice->D().createSemaphore(semaphoreCreateInfo));
-
 		// Fences (Used to check draw command buffer completion)
 		vk::FenceCreateInfo fenceCreateInfo;
 		// Create in signaled state so we don't wait on first render of each command buffer
@@ -623,33 +604,22 @@ public:
 
 	void draw()
 	{
-		// Get next image in the swap chain (back/front buffer)
-		VK_CHECK_RESULT(swapChain.acquireNextImage(presentCompleteSemaphore, &currentBuffer));
-
+		VulkanExampleBase::prepareFrame (); //sets currentBuffer
 		// Use a fence to wait until the command buffer has finished execution before using it again
 		VK_CHECK_RESULT(vkWaitForFences(device, 1, &waitFences[currentBuffer], VK_TRUE, UINT64_MAX));
 		VK_CHECK_RESULT(vkResetFences(device, 1, &waitFences[currentBuffer]));
 
 		// Pipeline stage at which the queue submission will wait (via pWaitSemaphores)
-		
 		vk::PipelineStageFlags waitStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
 		// The submit info structure specifices a command buffer queue submission batch
-		vk::SubmitInfo submitInfo;												
-		submitInfo.setPWaitDstStageMask (&waitStageMask)			// Pointer to the list of pipeline stages that the semaphore waits will occur at
-			.setPWaitSemaphores (&presentCompleteSemaphore)			// Semaphore(s) to wait upon before the submitted command buffer starts executing
-			.setWaitSemaphoreCount (1)
-			.setPSignalSemaphores (&renderCompleteSemaphore)		// Semaphore(s) to be signaled when command buffers have completed
-			.setSignalSemaphoreCount (1)
-			.setPCommandBuffers (&drawCmdBuffers[currentBuffer])	// Command buffers(s) to execute in this batch (submission)
-			.setCommandBufferCount (1);
+		//SEMAPHORES ALREADY SET
+		submitInfo.setPWaitDstStageMask (&waitStageMask)			
+			.setPCommandBuffers (&drawCmdBuffers[currentBuffer])	// Pointer to the list of pipeline stages that the semaphore waits will occur at
+			.setCommandBufferCount (1);								// Command buffers(s) to execute in this batch (submission)
+
 
 		VK_CHECK_RESULT(queue.submit (submitInfo, waitFences[currentBuffer]));	// Submit to the graphics queue passing a wait fence
-																						
-
-		// Present the current buffer to the swap chain
-		// Pass the semaphore signaled by the command buffer submission from the submit info as the wait semaphore for swap chain presentation
-		// This ensures that the image is not presented to the windowing system until all commands have been submitted
-		VK_CHECK_RESULT(swapChain.queuePresent(queue, currentBuffer, renderCompleteSemaphore));
+		VulkanExampleBase::submitFrame();
 	}
 
 	virtual void render() override

@@ -79,8 +79,6 @@ protected:
 	VkCommandPool cmdPool;
 	/** @brief Pipeline stages used to wait at for graphics queue submissions */
 	VkPipelineStageFlags submitPipelineStages = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	// Contains command buffers and semaphores to be presented to the queue
-	VkSubmitInfo submitInfo;
 	// Command buffers used for rendering
 	std::vector<vk::CommandBuffer> drawCmdBuffers;
 	// Global render pass for frame buffer writes
@@ -97,14 +95,14 @@ protected:
 	VkPipelineCache pipelineCache;
 	// Wraps the swap chain to present images (framebuffers) to the windowing system
 	VulkanSwapChain swapChain;
+
+	vk::SubmitInfo submitInfo;
 	// Synchronization semaphores
 	struct {
 		// Swap chain image presentation
-		VkSemaphore presentComplete;
+		vk::Semaphore presentComplete;
 		// Command buffer submission and execution
-		VkSemaphore renderComplete;
-		// Text overlay submission and execution
-		VkSemaphore textOverlayComplete;
+		vk::Semaphore renderComplete;
 	} semaphores;
 public:
 	bool prepared = false;
