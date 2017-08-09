@@ -14,12 +14,24 @@
 
 #include <vector>
 #include "vulkan/vulkan.h"
+#include <vulkan/vulkan.hpp>
 
 namespace vks
 {
 	namespace initializers
 	{
+/////////////////////////////////////////////////////////////////////////////////
+		inline vk::DeviceQueueCreateInfo deviceQueueInfo (uint32_t queueFamilyIndex)
+		{
+			const float defaultQueuePriority(0.0f);
+			vk::DeviceQueueCreateInfo queueInfo{};
+			queueInfo.setQueueFamilyIndex(queueFamilyIndex)
+				.setQueueCount(1)
+				.setPQueuePriorities(&defaultQueuePriority);
+			return queueInfo;
+		}
 
+/////////////////////////////////////////////////////////////////////////////////
 		inline VkMemoryAllocateInfo memoryAllocateInfo()
 		{
 			VkMemoryAllocateInfo memAllocInfo{};

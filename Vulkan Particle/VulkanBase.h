@@ -28,6 +28,7 @@
 #include <vector>
 
 #include "vulkan/vulkan.h"
+#include <vulkan/vulkan.hpp>
 
 #include "keycodes.h"
 #include "vksTools.h"
@@ -72,7 +73,7 @@ protected:
 	*
 	* @note By default no phyiscal device features are enabled
 	*/
-	VkPhysicalDeviceFeatures enabledFeatures{};
+	vk::PhysicalDeviceFeatures enabledFeatures;
 	/** @brief Set of device extensions to be enabled for this example (must be set in the derived constructor) */
 	std::vector<const char*> enabledExtensions;
 	/** @brief Logical device, application's view of the physical device (GPU) */

@@ -25,6 +25,11 @@ namespace vks
 {
 	struct VulkanDevice
 	{
+		vk::Device ownDevice; ///TODO
+		/** @brief Features that have been enabled for use on the physical device */
+		vk::PhysicalDeviceFeatures enabledFeatures;
+
+
 		/** @brief Physical device representation */
 		VkPhysicalDevice physicalDevice;
 		/** @brief Logical device representation (application's view of the device) */
@@ -33,8 +38,6 @@ namespace vks
 		VkPhysicalDeviceProperties properties;
 		/** @brief Features of the physical device that an application can use to check if a feature is supported */
 		VkPhysicalDeviceFeatures features;
-		/** @brief Features that have been enabled for use on the physical device */
-		VkPhysicalDeviceFeatures enabledFeatures;
 		/** @brief Memory types and heaps of the physical device */
 		VkPhysicalDeviceMemoryProperties memoryProperties;
 		/** @brief Queue family properties of the physical device */
@@ -215,29 +218,23 @@ namespace vks
 		*
 		* @return VkResult of the device creation call
 		*/
-		VkResult createLogicalDevice(VkPhysicalDeviceFeatures enabledFeatures, std::vector<const char*> enabledExtensions, bool useSwapChain = true, VkQueueFlags requestedQueueTypes = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT)
+		VkResult createLogicalDevice(vk::PhysicalDeviceFeatures enabledFeatures, std::vector<const char*> enabledExtensions, bool useSwapChain = true, VkQueueFlags requestedQueueTypes = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT)
 		{
 			// Desired queues need to be requested upon logical device creation
 			// Due to differing queue family configurations of Vulkan implementations this can be a bit tricky, especially if the application
 			// requests different queue types
 
-			std::vector<VkDeviceQueueCreateInfo> queueCreateInfos{};
+			std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos{};
 
 			// Get queue family indices for the requested queue family types
 			// Note that the indices may overlap depending on the implementation
 
-			const float defaultQueuePriority(0.0f);
 
 			// Graphics queue
 			if (requestedQueueTypes & VK_QUEUE_GRAPHICS_BIT)
 			{
 				queueFamilyIndices.graphics = getQueueFamilyIndex(VK_QUEUE_GRAPHICS_BIT);
-				VkDeviceQueueCreateInfo queueInfo{};
-				queueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-				queueInfo.queueFamilyIndex = queueFamilyIndices.graphics;
-				queueInfo.queueCount = 1;
-				queueInfo.pQueuePriorities = &defaultQueuePriority;
-				queueCreateInfos.push_back(queueInfo);
+				queueCreateInfos.push_back(vks::initializers::deviceQueueInfo (queueFamilyIndices.graphics));
 			}
 			else
 			{
@@ -251,12 +248,7 @@ namespace vks
 				if (queueFamilyIndices.compute != queueFamilyIndices.graphics)
 				{
 					// If compute family index differs, we need an additional queue create info for the compute queue
-					VkDeviceQueueCreateInfo queueInfo{};
-					queueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-					queueInfo.queueFamilyIndex = queueFamilyIndices.compute;
-					queueInfo.queueCount = 1;
-					queueInfo.pQueuePriorities = &defaultQueuePriority;
-					queueCreateInfos.push_back(queueInfo);
+					queueCreateInfos.push_back(vks::initializers::deviceQueueInfo (queueFamilyIndices.compute));
 				}
 			}
 			else
@@ -272,12 +264,7 @@ namespace vks
 				if ((queueFamilyIndices.transfer != queueFamilyIndices.graphics) && (queueFamilyIndices.transfer != queueFamilyIndices.compute))
 				{
 					// If compute family index differs, we need an additional queue create info for the compute queue
-					VkDeviceQueueCreateInfo queueInfo{};
-					queueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-					queueInfo.queueFamilyIndex = queueFamilyIndices.transfer;
-					queueInfo.queueCount = 1;
-					queueInfo.pQueuePriorities = &defaultQueuePriority;
-					queueCreateInfos.push_back(queueInfo);
+					queueCreateInfos.push_back(vks::initializers::deviceQueueInfo(queueFamilyIndices.transfer));
 				}
 			}
 			else
@@ -294,11 +281,11 @@ namespace vks
 				deviceExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 			}
 
-			VkDeviceCreateInfo deviceCreateInfo = {};
-			deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-			deviceCreateInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());;
-			deviceCreateInfo.pQueueCreateInfos = queueCreateInfos.data();
-			deviceCreateInfo.pEnabledFeatures = &enabledFeatures;
+			vk::DeviceCreateInfo deviceCreateInfo = {};
+			deviceCreateInfo.setQueueCreateInfoCount (static_cast<uint32_t>(queueCreateInfos.size()))
+							.setPQueueCreateInfos (queueCreateInfos.data())
+							.setPEnabledFeatures (&enabledFeatures);
+
 
 			// Enable the debug marker extension if it is present (likely meaning a debugging tool is present)
 			if (extensionSupported(VK_EXT_DEBUG_MARKER_EXTENSION_NAME))
@@ -313,7 +300,7 @@ namespace vks
 				deviceCreateInfo.ppEnabledExtensionNames = deviceExtensions.data();
 			}
 
-			VkResult result = vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &logicalDevice);
+			VkResult result = vkCreateDevice(physicalDevice, &(VkDeviceCreateInfo)deviceCreateInfo, nullptr, &logicalDevice);
 
 			if (result == VK_SUCCESS)
 			{
@@ -466,14 +453,13 @@ namespace vks
 		*
 		* @return A handle to the created command buffer
 		*/
-		VkCommandPool createCommandPool(uint32_t queueFamilyIndex, vk::CommandPoolCreateFlagBits createFlags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer)
+		vk::CommandPool createCommandPool(uint32_t queueFamilyIndex, vk::CommandPoolCreateFlagBits createFlags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer)
 		{
 			vk::CommandPoolCreateInfo cmdPoolInfo;
 			cmdPoolInfo.setQueueFamilyIndex (queueFamilyIndex)
 				.setFlags (createFlags);
 
-
-			VkCommandPool cmdPool;
+			VkCommandPool cmdPool{};
 			VK_CHECK_RESULT(vkCreateCommandPool(logicalDevice, &(VkCommandPoolCreateInfo)cmdPoolInfo, nullptr, &cmdPool));
 			return cmdPool;
 		}
