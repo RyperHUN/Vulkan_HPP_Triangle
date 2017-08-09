@@ -29,11 +29,9 @@ namespace vks
 		/** @brief Features that have been enabled for use on the physical device */
 		vk::PhysicalDeviceFeatures enabledFeatures;
 
-
+		VkDevice logicalDevice;
 		/** @brief Physical device representation */
 		vk::PhysicalDevice physicalDevice;
-		/** @brief Logical device representation (application's view of the device) */
-		VkDevice logicalDevice; ///TODO REMOVE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 		/** @brief Properties of the physical device including limits that the application can check against */
 		vk::PhysicalDeviceProperties properties;
 		/** @brief Features of the physical device that an application can use to check if a feature is supported */
@@ -60,7 +58,9 @@ namespace vks
 		} queueFamilyIndices;
 
 		/**  @brief Typecast to VkDevice */
-		operator vk::Device() { return logicalDevice; };
+		operator vk::Device() { return ownDevice; };
+		vk::Device& D() {return ownDevice; }
+		VkDevice GetDevice () {return (VkDevice)ownDevice; }
 
 		/**
 		* Default constructor
@@ -317,7 +317,7 @@ namespace vks
 			// Create the memory backing up the buffer handle
 			VkMemoryRequirements memReqs;
 			VkMemoryAllocateInfo memAlloc = vks::initializers::memoryAllocateInfo();
-			vkGetBufferMemoryRequirements(logicalDevice, *buffer, &memReqs);
+			vkGetBufferMemoryRequirements(this->GetDevice(), *buffer, &memReqs);
 			memAlloc.allocationSize = memReqs.size;
 			// Find a memory type index that fits the properties of the buffer
 			memAlloc.memoryTypeIndex = getMemoryType(memReqs.memoryTypeBits, memoryPropertyFlags);

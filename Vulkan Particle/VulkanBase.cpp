@@ -93,12 +93,12 @@ void VulkanExampleBase::createCommandBuffers()
 			VK_COMMAND_BUFFER_LEVEL_PRIMARY,
 			static_cast<uint32_t>(drawCmdBuffers.size()));
 
-	VK_CHECK_RESULT(vkAllocateCommandBuffers(device, &cmdBufAllocateInfo, drawCmdBuffers.data()));
+	VK_CHECK_RESULT(vkAllocateCommandBuffers(vulkanDevice->GetDevice(), &cmdBufAllocateInfo, drawCmdBuffers.data()));
 }
 
 void VulkanExampleBase::destroyCommandBuffers()
 {
-	vkFreeCommandBuffers(device, cmdPool, static_cast<uint32_t>(drawCmdBuffers.size()), drawCmdBuffers.data());
+	vkFreeCommandBuffers(vulkanDevice->GetDevice(), cmdPool, static_cast<uint32_t>(drawCmdBuffers.size()), drawCmdBuffers.data());
 }
 
 VkCommandBuffer VulkanExampleBase::createCommandBuffer(VkCommandBufferLevel level, bool begin)
@@ -111,7 +111,7 @@ VkCommandBuffer VulkanExampleBase::createCommandBuffer(VkCommandBufferLevel leve
 			level,
 			1);
 
-	VK_CHECK_RESULT(vkAllocateCommandBuffers(device, &cmdBufAllocateInfo, &cmdBuffer));
+	VK_CHECK_RESULT(vkAllocateCommandBuffers(vulkanDevice->GetDevice(), &cmdBufAllocateInfo, &cmdBuffer));
 
 	// If requested, also start the new command buffer
 	if (begin)
@@ -142,7 +142,7 @@ void VulkanExampleBase::flushCommandBuffer(VkCommandBuffer commandBuffer, VkQueu
 
 	if (free)
 	{
-		vkFreeCommandBuffers(device, cmdPool, 1, &commandBuffer);
+		vkFreeCommandBuffers(vulkanDevice->GetDevice(), cmdPool, 1, &commandBuffer);
 	}
 }
 
@@ -150,7 +150,7 @@ void VulkanExampleBase::createPipelineCache()
 {
 	VkPipelineCacheCreateInfo pipelineCacheCreateInfo = {};
 	pipelineCacheCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
-	VK_CHECK_RESULT(vkCreatePipelineCache(device, &pipelineCacheCreateInfo, nullptr, &pipelineCache));
+	VK_CHECK_RESULT(vkCreatePipelineCache(vulkanDevice->GetDevice(), &pipelineCacheCreateInfo, nullptr, &pipelineCache));
 }
 
 void VulkanExampleBase::prepare()
@@ -177,7 +177,7 @@ VkPipelineShaderStageCreateInfo VulkanExampleBase::loadShader(std::string fileNa
 	shaderStage.stage = stage;
 
 	///TODO
-	shaderStage.module = vks::tools::loadShader(fileName.c_str(), device);
+	shaderStage.module = vks::tools::loadShader(fileName.c_str(), vulkanDevice->GetDevice());
 
 	shaderStage.pName = "main"; // todo : make param
 	assert(shaderStage.module != VK_NULL_HANDLE);
@@ -249,7 +249,7 @@ void VulkanExampleBase::renderLoop()
 	}
 
 	// Flush device to make sure all resources can be freed 
-	vkDeviceWaitIdle(device);
+	vkDeviceWaitIdle(vulkanDevice->GetDevice());
 }
 
 void VulkanExampleBase::updateTextOverlay()
@@ -341,30 +341,30 @@ VulkanExampleBase::~VulkanExampleBase()
 	swapChain.cleanup();
 	if (descriptorPool != VK_NULL_HANDLE)
 	{
-		vkDestroyDescriptorPool(device, descriptorPool, nullptr);
+		vkDestroyDescriptorPool(vulkanDevice->GetDevice(), descriptorPool, nullptr);
 	}
 	destroyCommandBuffers();
-	vkDestroyRenderPass(device, renderPass, nullptr);
+	vkDestroyRenderPass(vulkanDevice->GetDevice(), renderPass, nullptr);
 	for (uint32_t i = 0; i < frameBuffers.size(); i++)
 	{
-		vkDestroyFramebuffer(device, frameBuffers[i], nullptr);
+		vkDestroyFramebuffer(vulkanDevice->GetDevice(), frameBuffers[i], nullptr);
 	}
 
 	for (auto& shaderModule : shaderModules)
 	{
-		vkDestroyShaderModule(device, shaderModule, nullptr);
+		vkDestroyShaderModule(vulkanDevice->GetDevice(), shaderModule, nullptr);
 	}
-	vkDestroyImageView(device, depthStencil.view, nullptr);
-	vkDestroyImage(device, depthStencil.image, nullptr);
-	vkFreeMemory(device, depthStencil.mem, nullptr);
+	vkDestroyImageView(vulkanDevice->GetDevice(), depthStencil.view, nullptr);
+	vkDestroyImage(vulkanDevice->GetDevice(), depthStencil.image, nullptr);
+	vkFreeMemory(vulkanDevice->GetDevice(), depthStencil.mem, nullptr);
 
-	vkDestroyPipelineCache(device, pipelineCache, nullptr);
+	vkDestroyPipelineCache(vulkanDevice->GetDevice(), pipelineCache, nullptr);
 
-	vkDestroyCommandPool(device, cmdPool, nullptr);
+	vkDestroyCommandPool(vulkanDevice->GetDevice(), cmdPool, nullptr);
 
-	vkDestroySemaphore(device, semaphores.presentComplete, nullptr);
-	vkDestroySemaphore(device, semaphores.renderComplete, nullptr);
-	vkDestroySemaphore(device, semaphores.textOverlayComplete, nullptr);
+	vkDestroySemaphore(vulkanDevice->GetDevice(), semaphores.presentComplete, nullptr);
+	vkDestroySemaphore(vulkanDevice->GetDevice(), semaphores.renderComplete, nullptr);
+	vkDestroySemaphore(vulkanDevice->GetDevice(), semaphores.textOverlayComplete, nullptr);
 
 	delete vulkanDevice;
 
@@ -456,30 +456,29 @@ void VulkanExampleBase::initVulkan()
 	// This is handled by a separate class that gets a logical device representation
 	// and encapsulates functions related to a device
 	vulkanDevice = new vks::VulkanDevice(physicalDevice);
+	device = vulkanDevice->GetDevice();
 	vulkanDevice->createLogicalDevice(enabledFeatures, enabledExtensions);
-	device = vulkanDevice->logicalDevice; //TODO Replace
 
 	// Get a graphics queue from the device
-	vkGetDeviceQueue(device, vulkanDevice->queueFamilyIndices.graphics, 0, &queue);
-
+	queue = vulkanDevice->D().getQueue(vulkanDevice->queueFamilyIndices.graphics, 0);
 	// Find a suitable depth format
 	VkBool32 validDepthFormat = vks::tools::getSupportedDepthFormat(physicalDevice, &depthFormat);
 	assert(validDepthFormat);
 
-	swapChain.connect(instance, physicalDevice, device);
+	swapChain.connect(instance, physicalDevice, vulkanDevice->GetDevice ());
 
 	// Create synchronization objects
-	VkSemaphoreCreateInfo semaphoreCreateInfo = vks::initializers::semaphoreCreateInfo();
+	vk::SemaphoreCreateInfo semaphoreCreateInfo; //Arguments reserved for future use
 	// Create a semaphore used to synchronize image presentation
 	// Ensures that the image is displayed before we start submitting new commands to the queu
-	VK_CHECK_RESULT(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &semaphores.presentComplete));
+	semaphores.presentComplete = CHECK(vulkanDevice->D().createSemaphore(semaphoreCreateInfo, nullptr));
 	// Create a semaphore used to synchronize command submission
 	// Ensures that the image is not presented until all commands have been sumbitted and executed
-	VK_CHECK_RESULT(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &semaphores.renderComplete));
+	semaphores.renderComplete = CHECK(vulkanDevice->D().createSemaphore(semaphoreCreateInfo, nullptr));
 	// Create a semaphore used to synchronize command submission
 	// Ensures that the image is not presented until all commands for the text overlay have been sumbitted and executed
 	// Will be inserted after the render complete semaphore if the text overlay is enabled
-	VK_CHECK_RESULT(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &semaphores.textOverlayComplete));
+	semaphores.textOverlayComplete = CHECK(vulkanDevice->D().createSemaphore(semaphoreCreateInfo, nullptr));
 
 	// Set up submit info structure
 	// Semaphores will stay the same during application lifetime
@@ -796,15 +795,15 @@ void VulkanExampleBase::setupDepthStencil()
 
 	VkMemoryRequirements memReqs;
 
-	VK_CHECK_RESULT(vkCreateImage(device, &image, nullptr, &depthStencil.image));
-	vkGetImageMemoryRequirements(device, depthStencil.image, &memReqs);
+	VK_CHECK_RESULT(vkCreateImage(vulkanDevice->GetDevice (), &image, nullptr, &depthStencil.image));
+	vkGetImageMemoryRequirements(vulkanDevice->GetDevice(), depthStencil.image, &memReqs);
 	mem_alloc.allocationSize = memReqs.size;
 	mem_alloc.memoryTypeIndex = vulkanDevice->getMemoryType(memReqs.memoryTypeBits, vk::MemoryPropertyFlagBits::eDeviceLocal);
-	VK_CHECK_RESULT(vkAllocateMemory(device, &mem_alloc, nullptr, &depthStencil.mem));
-	VK_CHECK_RESULT(vkBindImageMemory(device, depthStencil.image, depthStencil.mem, 0));
+	VK_CHECK_RESULT(vkAllocateMemory(vulkanDevice->GetDevice(), &mem_alloc, nullptr, &depthStencil.mem));
+	VK_CHECK_RESULT(vkBindImageMemory(vulkanDevice->GetDevice(), depthStencil.image, depthStencil.mem, 0));
 
 	depthStencilView.image = depthStencil.image;
-	VK_CHECK_RESULT(vkCreateImageView(device, &depthStencilView, nullptr, &depthStencil.view));
+	VK_CHECK_RESULT(vkCreateImageView(vulkanDevice->GetDevice(), &depthStencilView, nullptr, &depthStencil.view));
 }
 
 void VulkanExampleBase::setupFrameBuffer()
@@ -829,7 +828,7 @@ void VulkanExampleBase::setupFrameBuffer()
 	for (uint32_t i = 0; i < frameBuffers.size(); i++)
 	{
 		attachments[0] = swapChain.buffers[i].view;
-		VK_CHECK_RESULT(vkCreateFramebuffer(device, &frameBufferCreateInfo, nullptr, &frameBuffers[i]));
+		VK_CHECK_RESULT(vkCreateFramebuffer(vulkanDevice->GetDevice(), &frameBufferCreateInfo, nullptr, &frameBuffers[i]));
 	}
 }
 
@@ -902,7 +901,7 @@ void VulkanExampleBase::setupRenderPass()
 	renderPassInfo.dependencyCount = static_cast<uint32_t>(dependencies.size());
 	renderPassInfo.pDependencies = dependencies.data();
 
-	VK_CHECK_RESULT(vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass));
+	VK_CHECK_RESULT(vkCreateRenderPass(vulkanDevice->GetDevice(), &renderPassInfo, nullptr, &renderPass));
 }
 
 void VulkanExampleBase::getEnabledFeatures()
@@ -919,7 +918,7 @@ void VulkanExampleBase::windowResize()
 	prepared = false;
 
 	// Ensure all operations on the device have been finished before destroying resources
-	vkDeviceWaitIdle(device);
+	vkDeviceWaitIdle(vulkanDevice->GetDevice());
 
 	// Recreate swap chain
 	width = destWidth;
@@ -928,14 +927,14 @@ void VulkanExampleBase::windowResize()
 
 	// Recreate the frame buffers
 
-	vkDestroyImageView(device, depthStencil.view, nullptr);
-	vkDestroyImage(device, depthStencil.image, nullptr);
-	vkFreeMemory(device, depthStencil.mem, nullptr);
+	vkDestroyImageView(vulkanDevice->GetDevice(), depthStencil.view, nullptr);
+	vkDestroyImage(vulkanDevice->GetDevice(), depthStencil.image, nullptr);
+	vkFreeMemory(vulkanDevice->GetDevice(), depthStencil.mem, nullptr);
 	setupDepthStencil();
 
 	for (uint32_t i = 0; i < frameBuffers.size(); i++)
 	{
-		vkDestroyFramebuffer(device, frameBuffers[i], nullptr);
+		vkDestroyFramebuffer(vulkanDevice->GetDevice(), frameBuffers[i], nullptr);
 	}
 	setupFrameBuffer();
 
@@ -945,7 +944,7 @@ void VulkanExampleBase::windowResize()
 	createCommandBuffers();
 	buildCommandBuffers();
 
-	vkDeviceWaitIdle(device);
+	vkDeviceWaitIdle(vulkanDevice->GetDevice());
 
 	///TODO
 	//camera.updateAspectRatio((float)width / (float)height);

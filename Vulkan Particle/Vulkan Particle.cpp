@@ -135,10 +135,10 @@ public:
 		semaphoreCreateInfo.pNext = nullptr;
 
 		// Semaphore used to ensures that image presentation is complete before starting to submit again
-		VK_CHECK_RESULT(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &presentCompleteSemaphore));
+		VK_CHECK_RESULT(vkCreateSemaphore(vulkanDevice->GetDevice(), &semaphoreCreateInfo, nullptr, &presentCompleteSemaphore));
 
 		// Semaphore used to ensures that all commands submitted have been finished before submitting the image to the queue
-		VK_CHECK_RESULT(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &renderCompleteSemaphore));
+		VK_CHECK_RESULT(vkCreateSemaphore(vulkanDevice->GetDevice(), &semaphoreCreateInfo, nullptr, &renderCompleteSemaphore));
 
 		// Fences (Used to check draw command buffer completion)
 		VkFenceCreateInfo fenceCreateInfo = {};
@@ -148,7 +148,7 @@ public:
 		waitFences.resize(drawCmdBuffers.size());
 		for (auto& fence : waitFences)
 		{
-			VK_CHECK_RESULT(vkCreateFence(device, &fenceCreateInfo, nullptr, &fence));
+			VK_CHECK_RESULT(vkCreateFence(vulkanDevice->GetDevice(), &fenceCreateInfo, nullptr, &fence));
 		}
 	}
 
