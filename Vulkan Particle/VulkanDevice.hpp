@@ -307,7 +307,7 @@ namespace vks
 		*
 		* @return VK_SUCCESS if buffer handle and memory have been created and (optionally passed) data has been copied
 		*/
-		BuffMem createBuffer(vk::BufferUsageFlags usageFlags, vk::MemoryPropertyFlags memoryPropertyFlags, VkDeviceSize size, void *data = nullptr)
+		BuffMem createBuffer(vk::BufferUsageFlags usageFlags, vk::MemoryPropertyFlags memoryPropertyFlags, vk::DeviceSize size, void *data = nullptr)
 		{
 			vk::BufferCreateInfo bufferCreateInfo;
 			bufferCreateInfo.setUsage (usageFlags)

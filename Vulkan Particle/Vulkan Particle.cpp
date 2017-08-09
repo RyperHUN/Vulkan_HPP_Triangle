@@ -37,8 +37,8 @@ public:
 
 	// Uniform buffer block object
 	struct {
-		VkDeviceMemory memory;
-		VkBuffer buffer;
+		vk::DeviceMemory memory;
+		vk::Buffer buffer;
 		vk::DescriptorBufferInfo descriptor;
 	}  uniformBufferVS;
 
@@ -201,40 +201,18 @@ public:
 	{
 		// Prepare and initialize a uniform buffer block containing shader uniforms
 		// Single uniforms like in OpenGL are no longer present in Vulkan. All Shader uniforms are passed via uniform buffer blocks
-		VkMemoryRequirements memReqs;
 
-		// Vertex shader uniform buffer block
-		VkBufferCreateInfo bufferInfo = {};
-		VkMemoryAllocateInfo allocInfo = {};
-		allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-		allocInfo.pNext = nullptr;
-		allocInfo.allocationSize = 0;
-		allocInfo.memoryTypeIndex = 0;
+		vk::DeviceSize uboSize = sizeof(uboVS);
 
-		bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-		bufferInfo.size = sizeof(uboVS);
-		// This buffer will be used as a uniform buffer
-		bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-
-		// Create a new buffer
-		VK_CHECK_RESULT(vkCreateBuffer(device, &bufferInfo, nullptr, &uniformBufferVS.buffer));
-		// Get memory requirements including size, alignment and memory type 
-		vkGetBufferMemoryRequirements(device, uniformBufferVS.buffer, &memReqs);
-		allocInfo.allocationSize = memReqs.size;
-		// Get the memory type index that supports host visibile memory access
-		// Most implementations offer multiple memory types and selecting the correct one to allocate memory from is crucial
-		// We also want the buffer to be host coherent so we don't have to flush (or sync after every update.
-		// Note: This may affect performance so you might not want to do this in a real world application that updates buffers on a regular base
-		allocInfo.memoryTypeIndex = vulkanDevice->getMemoryType(memReqs.memoryTypeBits, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
-		// Allocate memory for the uniform buffer
-		VK_CHECK_RESULT(vkAllocateMemory(device, &allocInfo, nullptr, &(uniformBufferVS.memory)));
-		// Bind memory to buffer
-		VK_CHECK_RESULT(vkBindBufferMemory(device, uniformBufferVS.buffer, uniformBufferVS.memory, 0));
+		BuffMem result = vulkanDevice->createBuffer (vk::BufferUsageFlagBits::eUniformBuffer, 
+			vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent, uboSize);
+		uniformBufferVS.buffer = result.buff;
+		uniformBufferVS.memory = result.mem;
 
 		// Store information in the uniform's descriptor that is used by the descriptor set
-		uniformBufferVS.descriptor.buffer = uniformBufferVS.buffer;
-		uniformBufferVS.descriptor.offset = 0;
-		uniformBufferVS.descriptor.range = sizeof(uboVS);
+		uniformBufferVS.descriptor	.setBuffer	(uniformBufferVS.buffer)
+									.setOffset	(0)
+									.setRange	(uboSize);
 
 		updateUniformBuffers();
 	}
@@ -472,8 +450,8 @@ public:
 		// Create the pipeline layout that is used to generate the rendering pipelines that are based on this descriptor set layout
 		// In a more complex scenario you would have different pipeline layouts for different descriptor set layouts that could be reused
 		vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo;
-		pipelineLayoutCreateInfo.setSetLayoutCount (1)
-			.setPSetLayouts (&descriptorSetLayout);
+		pipelineLayoutCreateInfo.setSetLayoutCount	(1)
+			.setPSetLayouts							(&descriptorSetLayout);
 
 		pipelineLayout = CHECK(vulkanDevice->D().createPipelineLayout (pipelineLayoutCreateInfo));
 	}
