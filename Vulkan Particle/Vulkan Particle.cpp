@@ -152,29 +152,6 @@ public:
 		}
 	}
 
-	// This function is used to request a device memory type that supports all the property flags we request (e.g. device local, host visibile)
-	// Upon success it will return the index of the memory type that fits our requestes memory properties
-	// This is necessary as implementations can offer an arbitrary number of memory types with different
-	// memory properties. 
-	// You can check http://vulkan.gpuinfo.org/ for details on different memory configurations
-	uint32_t getMemoryTypeIndex(uint32_t typeBits, VkMemoryPropertyFlags properties)
-	{
-		// Iterate over all memory types available for the device used in this example
-		for (uint32_t i = 0; i < deviceMemoryProperties.memoryTypeCount; i++)
-		{
-			if ((typeBits & 1) == 1)
-			{
-				if ((deviceMemoryProperties.memoryTypes[i].propertyFlags & properties) == properties)
-				{
-					return i;
-				}
-			}
-			typeBits >>= 1;
-		}
-
-		throw "Could not find a suitable memory type!";
-	}
-
 	void prepareVertices ()
 	{
 		// A note on memory management in Vulkan in general:
@@ -216,7 +193,7 @@ public:
 			vkGetBufferMemoryRequirements(device, vertices.buffer, &memReqs);
 			memAlloc.allocationSize = memReqs.size;
 			// VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT is host visible memory, and VK_MEMORY_PROPERTY_HOST_COHERENT_BIT makes sure writes are directly visible
-			memAlloc.memoryTypeIndex = getMemoryTypeIndex(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+			memAlloc.memoryTypeIndex = vulkanDevice->getMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 			VK_CHECK_RESULT(vkAllocateMemory(device, &memAlloc, nullptr, &vertices.memory));
 			VK_CHECK_RESULT(vkMapMemory(device, vertices.memory, 0, memAlloc.allocationSize, 0, &data));
 			memcpy(data, vertexBuffer.data(), vertexBufferSize);
@@ -233,7 +210,7 @@ public:
 			VK_CHECK_RESULT(vkCreateBuffer(device, &indexbufferInfo, nullptr, &indices.buffer));
 			vkGetBufferMemoryRequirements(device, indices.buffer, &memReqs);
 			memAlloc.allocationSize = memReqs.size;
-			memAlloc.memoryTypeIndex = getMemoryTypeIndex(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+			memAlloc.memoryTypeIndex = vulkanDevice->getMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 			VK_CHECK_RESULT(vkAllocateMemory(device, &memAlloc, nullptr, &indices.memory));
 			VK_CHECK_RESULT(vkMapMemory(device, indices.memory, 0, indexBufferSize, 0, &data));
 			memcpy(data, indexBuffer.data(), indexBufferSize);
@@ -270,7 +247,7 @@ public:
 		// Most implementations offer multiple memory types and selecting the correct one to allocate memory from is crucial
 		// We also want the buffer to be host coherent so we don't have to flush (or sync after every update.
 		// Note: This may affect performance so you might not want to do this in a real world application that updates buffers on a regular base
-		allocInfo.memoryTypeIndex = getMemoryTypeIndex(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+		allocInfo.memoryTypeIndex = vulkanDevice->getMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 		// Allocate memory for the uniform buffer
 		VK_CHECK_RESULT(vkAllocateMemory(device, &allocInfo, nullptr, &(uniformBufferVS.memory)));
 		// Bind memory to buffer
