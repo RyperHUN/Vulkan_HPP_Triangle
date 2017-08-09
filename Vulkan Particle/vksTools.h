@@ -10,6 +10,8 @@
 
 #include <assert.h>
 
+#include <vulkan/vulkan.hpp>
+
 // Custom define for better code readability
 #define VK_FLAGS_NONE 0
 // Default fence timeout in nanoseconds
@@ -62,6 +64,14 @@ namespace vks {namespace tools {
 	}																									\
 }
 
+template <typename T>
+T CHECK(vk::ResultValue<T> resultValue)
+{
+	VkResult result = (VkResult)resultValue.result;
+	VK_CHECK_RESULT(result);
+
+	return resultValue.value;
+}
 
 namespace vks {
 	namespace tools {

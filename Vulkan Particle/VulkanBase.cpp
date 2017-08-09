@@ -47,8 +47,7 @@ void VulkanExampleBase::createInstance(bool enableValidation)
 	//	instanceCreateInfo.enabledLayerCount = vks::debug::validationLayerCount;
 	//	instanceCreateInfo.ppEnabledLayerNames = vks::debug::validationLayerNames;
 	//}
-	instance = vk::createInstance (instanceCreateInfo, nullptr);
-	//return vkCreateInstance(&instanceCreateInfo, nullptr, &instance);
+	instance = CHECK(vk::createInstance (instanceCreateInfo, nullptr));
 }
 
 std::string VulkanExampleBase::getWindowTitle()
@@ -401,20 +400,10 @@ VulkanExampleBase::~VulkanExampleBase()
 
 void VulkanExampleBase::initVulkan()
 {
-	VkResult err = VkResult::VK_SUCCESS;
-
 	// Vulkan instance
-	///TODO
 	createInstance(settings.validation);
-	if (err)
-	{
-		vks::tools::exitFatal("Could not create Vulkan instance : \n" + vks::tools::errorString(err), "Fatal error");
-	}
 
-#if defined(__ANDROID__)
-	vks::android::loadVulkanFunctions(instance);
-#endif
-
+	
 	// If requested, we enable the default validation layers for debugging
 	if (settings.validation)
 	{
@@ -432,7 +421,7 @@ void VulkanExampleBase::initVulkan()
 	assert(gpuCount > 0);
 	// Enumerate devices
 	std::vector<VkPhysicalDevice> physicalDevices(gpuCount);
-	err = vkEnumeratePhysicalDevices(instance, &gpuCount, physicalDevices.data());
+	VkResult err = vkEnumeratePhysicalDevices(instance, &gpuCount, physicalDevices.data());
 	if (err)
 	{
 		vks::tools::exitFatal("Could not enumerate physical devices : \n" + vks::tools::errorString(err), "Fatal error");
