@@ -339,7 +339,7 @@ VulkanExampleBase::~VulkanExampleBase()
 {
 	// Clean up Vulkan resources
 	swapChain.cleanup();
-	if (descriptorPool != VK_NULL_HANDLE)
+	if (descriptorPool)
 	{
 		vkDestroyDescriptorPool(vulkanDevice->GetDevice(), descriptorPool, nullptr);
 	}

@@ -429,10 +429,10 @@ public:
 	void setupDescriptorPool()
 	{
 		// We need to tell the API the number of max. requested descriptors per type
-		VkDescriptorPoolSize typeCounts[1];
+		vk::DescriptorPoolSize typeCounts[1];
 		// This example only uses one descriptor type (uniform buffer) and only requests one descriptor of this type
-		typeCounts[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		typeCounts[0].descriptorCount = 1;
+		typeCounts[0].setType (vk::DescriptorType::eUniformBuffer);
+		typeCounts[0].setDescriptorCount (1);
 		// For additional types you need to add new entries in the type count list
 		// E.g. for two combined image samplers :
 		// typeCounts[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -440,22 +440,21 @@ public:
 
 		// Create the global descriptor pool
 		// All descriptors used in this example are allocated from this pool
-		VkDescriptorPoolCreateInfo descriptorPoolInfo = {};
-		descriptorPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-		descriptorPoolInfo.pNext = nullptr;
-		descriptorPoolInfo.poolSizeCount = 1;
-		descriptorPoolInfo.pPoolSizes = typeCounts;
+		vk::DescriptorPoolCreateInfo descriptorPoolInfo;
+		descriptorPoolInfo.setPoolSizeCount (1)
+			.setPPoolSizes (typeCounts)
+			.setMaxSets (1);
 		// Set the max. number of descriptor sets that can be requested from this pool (requesting beyond this limit will result in an error)
 		descriptorPoolInfo.maxSets = 1;
 
-		VK_CHECK_RESULT(vkCreateDescriptorPool(device, &descriptorPoolInfo, nullptr, &descriptorPool));
+		descriptorPool = CHECK(vulkanDevice->D().createDescriptorPool (descriptorPoolInfo));
 	}
 
 	void setupDescriptorSetLayout()
 	{
 		// Setup layout of descriptors used in this example
 		// Basically connects the different shader stages to descriptors for binding uniform buffers, image samplers, etc.
-		// So every shader binding should map to one descriptor set layout binding
+		// So every shader binding should map to one descriptor set layout binding!!!!!!!!!!!
 
 		// Binding 0: Uniform buffer (Vertex shader)
 		VkDescriptorSetLayoutBinding layoutBinding = {};
