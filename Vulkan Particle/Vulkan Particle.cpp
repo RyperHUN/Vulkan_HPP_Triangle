@@ -217,159 +217,138 @@ public:
 		// A pipeline is then stored and hashed on the GPU making pipeline changes very fast
 		// Note: There are still a few dynamic states that are not directly part of the pipeline (but the info that they are used is)
 
-		VkGraphicsPipelineCreateInfo pipelineCreateInfo = {};
-		pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-		// The layout used for this pipeline (can be shared among multiple pipelines using the same layout)
-		pipelineCreateInfo.layout = pipelineLayout;
-		// Renderpass this pipeline is attached to
-		pipelineCreateInfo.renderPass = renderPass;
-
 		// Construct the differnent states making up the pipeline
 
 		// Input assembly state describes how primitives are assembled
 		// This pipeline will assemble vertex data as a triangle lists (though we only use one triangle)
-		VkPipelineInputAssemblyStateCreateInfo inputAssemblyState = {};
-		inputAssemblyState.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-		inputAssemblyState.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+		vk::PipelineInputAssemblyStateCreateInfo inputAssemblyState = {};
+		inputAssemblyState.setTopology (vk::PrimitiveTopology::eTriangleList);
 
 		// Rasterization state
-		VkPipelineRasterizationStateCreateInfo rasterizationState = {};
-		rasterizationState.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-		rasterizationState.polygonMode = VK_POLYGON_MODE_FILL;
-		rasterizationState.cullMode = VK_CULL_MODE_NONE;
-		rasterizationState.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-		rasterizationState.depthClampEnable = VK_FALSE;
-		rasterizationState.rasterizerDiscardEnable = VK_FALSE;
-		rasterizationState.depthBiasEnable = VK_FALSE;
-		rasterizationState.lineWidth = 1.0f;
+		vk::PipelineRasterizationStateCreateInfo rasterizationState = {};
+		rasterizationState.setPolygonMode	(vk::PolygonMode::eFill)
+			.setCullMode					(vk::CullModeFlagBits::eNone)
+			.setFrontFace (vk::FrontFace::eCounterClockwise)
+			.setDepthClampEnable (false)
+			.setRasterizerDiscardEnable (false)
+			.setDepthBiasEnable (false)
+			.setLineWidth (1.0f);
 
 		// Color blend state describes how blend factors are calculated (if used)
 		// We need one blend attachment state per color attachment (even if blending is not used
-		VkPipelineColorBlendAttachmentState blendAttachmentState[1] = {};
-		blendAttachmentState[0].colorWriteMask = 0xf;
-		blendAttachmentState[0].blendEnable = VK_FALSE;
-		VkPipelineColorBlendStateCreateInfo colorBlendState = {};
-		colorBlendState.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-		colorBlendState.attachmentCount = 1;
-		colorBlendState.pAttachments = blendAttachmentState;
+		vk::PipelineColorBlendAttachmentState blendAttachmentState[1] = {};
+		auto val = vk::ColorComponentFlagBits::eA | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eR;
+		blendAttachmentState[0].setColorWriteMask (val)
+								.setBlendEnable (false);
+		vk::PipelineColorBlendStateCreateInfo colorBlendState = {};
+		colorBlendState.setAttachmentCount (1)
+						.setPAttachments (blendAttachmentState);
 
 		// Viewport state sets the number of viewports and scissor used in this pipeline
 		// Note: This is actually overriden by the dynamic states (see below)
-		VkPipelineViewportStateCreateInfo viewportState = {};
-		viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-		viewportState.viewportCount = 1;
-		viewportState.scissorCount = 1;
+		vk::PipelineViewportStateCreateInfo viewportState = {};
+		viewportState.setViewportCount (1)
+					 .setScissorCount (1);
 
 		// Enable dynamic states
 		// Most states are baked into the pipeline, but there are still a few dynamic states that can be changed within a command buffer
 		// To be able to change these we need do specify which dynamic states will be changed using this pipeline. Their actual states are set later on in the command buffer.
 		// For this example we will set the viewport and scissor using dynamic states
-		std::vector<VkDynamicState> dynamicStateEnables;
-		dynamicStateEnables.push_back(VK_DYNAMIC_STATE_VIEWPORT);
-		dynamicStateEnables.push_back(VK_DYNAMIC_STATE_SCISSOR);
-		VkPipelineDynamicStateCreateInfo dynamicState = {};
-		dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-		dynamicState.pDynamicStates = dynamicStateEnables.data();
-		dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStateEnables.size());
+		std::vector<vk::DynamicState> dynamicStateEnables;
+		dynamicStateEnables.push_back(vk::DynamicState::eScissor);
+		dynamicStateEnables.push_back(vk::DynamicState::eViewport);
+		vk::PipelineDynamicStateCreateInfo dynamicState = {};
+		dynamicState.setDynamicStateCount ((uint32_t)dynamicStateEnables.size())
+					.setPDynamicStates (dynamicStateEnables.data());
 
 		// Depth and stencil state containing depth and stencil compare and test operations
 		// We only use depth tests and want depth tests and writes to be enabled and compare with less or equal
-		VkPipelineDepthStencilStateCreateInfo depthStencilState = {};
-		depthStencilState.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-		depthStencilState.depthTestEnable = VK_TRUE;
-		depthStencilState.depthWriteEnable = VK_TRUE;
-		depthStencilState.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
-		depthStencilState.depthBoundsTestEnable = VK_FALSE;
-		depthStencilState.back.failOp = VK_STENCIL_OP_KEEP;
-		depthStencilState.back.passOp = VK_STENCIL_OP_KEEP;
-		depthStencilState.back.compareOp = VK_COMPARE_OP_ALWAYS;
-		depthStencilState.stencilTestEnable = VK_FALSE;
-		depthStencilState.front = depthStencilState.back;
+		vk::PipelineDepthStencilStateCreateInfo depthStencilState = {};
+		vk::StencilOpState back;
+		back.setFailOp (vk::StencilOp::eKeep)
+			.setPassOp (vk::StencilOp::eKeep)
+			.setCompareOp (vk::CompareOp::eAlways);
+		depthStencilState.setDepthTestEnable (true)
+			.setDepthWriteEnable (true)
+			.setDepthCompareOp(vk::CompareOp::eLessOrEqual)
+			.setDepthBoundsTestEnable (false)
+			.setBack (back)
+			.setFront (back)
+			.setStencilTestEnable (false);
 
 		// Multi sampling state
 		// This example does not make use fo multi sampling (for anti-aliasing), the state must still be set and passed to the pipeline
-		VkPipelineMultisampleStateCreateInfo multisampleState = {};
-		multisampleState.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-		multisampleState.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-		multisampleState.pSampleMask = nullptr;
+		vk::PipelineMultisampleStateCreateInfo multisampleState = {};
+		multisampleState.setRasterizationSamples(vk::SampleCountFlagBits::e1)
+						.setPSampleMask			(nullptr);
 
 		// Vertex input descriptions 
 		// Specifies the vertex input parameters for a pipeline
 
 		// Vertex input binding
 		// This example uses a single vertex input binding at binding point 0 (see vkCmdBindVertexBuffers)
-		VkVertexInputBindingDescription vertexInputBinding = {};
-		vertexInputBinding.binding = 0;
-		vertexInputBinding.stride = sizeof(Vertex);
-		vertexInputBinding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+		vk::VertexInputBindingDescription vertexInputBinding = {};
+		vertexInputBinding.setBinding (0)
+						  .setStride (sizeof(Vertex))
+						  .setInputRate (vk::VertexInputRate::eVertex);
 
 		// Inpute attribute bindings describe shader attribute locations and memory layouts
-		std::array<VkVertexInputAttributeDescription, 2> vertexInputAttributs;
+		std::array<vk::VertexInputAttributeDescription, 2> vertexInputAttributs;
 		// These match the following shader layout (see triangle.vert):
 		//	layout (location = 0) in vec3 inPos;
 		//	layout (location = 1) in vec3 inColor;
 		// Attribute location 0: Position
-		vertexInputAttributs[0].binding = 0;
-		vertexInputAttributs[0].location = 0;
-		// Position attribute is three 32 bit signed (SFLOAT) floats (R32 G32 B32)
-		vertexInputAttributs[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-		vertexInputAttributs[0].offset = offsetof(Vertex, position);
+		vertexInputAttributs[0].setBinding (0)
+							   .setLocation (0)
+							   .setFormat (vk::Format::eR32G32B32Sfloat) // Position attribute is three 32 bit signed (SFLOAT) floats (R32 G32 B32)
+							   .setOffset (offsetof(Vertex, position));
 		// Attribute location 1: Color
-		vertexInputAttributs[1].binding = 0;
-		vertexInputAttributs[1].location = 1;
-		// Color attribute is three 32 bit signed (SFLOAT) floats (R32 G32 B32)
-		vertexInputAttributs[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-		vertexInputAttributs[1].offset = offsetof(Vertex, color);
+		vertexInputAttributs[1].setBinding (0)
+								.setLocation (1)
+								.setFormat (vk::Format::eR32G32B32Sfloat) // Color attribute is three 32 bit signed (SFLOAT) floats (R32 G32 B32)
+								.setOffset (offsetof(Vertex, color));
+
 
 		// Vertex input state used for pipeline creation
-		VkPipelineVertexInputStateCreateInfo vertexInputState = {};
-		vertexInputState.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-		vertexInputState.vertexBindingDescriptionCount = 1;
-		vertexInputState.pVertexBindingDescriptions = &vertexInputBinding;
-		vertexInputState.vertexAttributeDescriptionCount = 2;
-		vertexInputState.pVertexAttributeDescriptions = vertexInputAttributs.data();
+		vk::PipelineVertexInputStateCreateInfo vertexInputState = {};
+		vertexInputState.setVertexBindingDescriptionCount (1)
+						.setPVertexBindingDescriptions (&vertexInputBinding)
+						.setVertexAttributeDescriptionCount (2)
+						.setPVertexAttributeDescriptions (vertexInputAttributs.data());
 
 		// Shaders
-		std::array<VkPipelineShaderStageCreateInfo, 2> shaderStages{};
+		std::array<vk::PipelineShaderStageCreateInfo, 2> shaderStages{};
 
 		// Vertex shader
-		shaderStages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-		// Set pipeline stage for this shader
-		shaderStages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
-		// Load binary SPIR-V shader
-		//shaderStages[0].module = vks::tools::loadShaderGLSL("shaders/triangle.vert",device, VK_SHADER_STAGE_VERTEX_BIT);
-		shaderStages[0].module = vks::tools::loadSPIRVShader ("shaders/triangle.vert.spv", device);
-		// Main entry point for the shader
-		shaderStages[0].pName = "main";
-		assert(shaderStages[0].module != VK_NULL_HANDLE);
+		shaderStages[0].setStage (vk::ShaderStageFlagBits::eVertex)											// Set pipeline stage for this shader
+						.setModule (vks::tools::loadSPIRVShader("shaders/triangle.vert.spv", device))
+						.setPName ("main");																	// Main entry point for the shader
 
 		// Fragment shader
-		shaderStages[1].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-		// Set pipeline stage for this shader
-		shaderStages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-		// Load binary SPIR-V shader
-		shaderStages[1].module = vks::tools::loadShaderGLSL ("shaders/triangle.frag", device, VK_SHADER_STAGE_FRAGMENT_BIT);
-		// Main entry point for the shader
-		shaderStages[1].pName = "main";
-		assert(shaderStages[1].module != VK_NULL_HANDLE);
+		shaderStages[1].setStage (vk::ShaderStageFlagBits::eFragment)
+						.setModule (vks::tools::loadShaderGLSL("shaders/triangle.frag", device, VK_SHADER_STAGE_FRAGMENT_BIT))
+						.setPName ("main");
+
 
 		// Set pipeline shader stage info
-		pipelineCreateInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
-		pipelineCreateInfo.pStages = shaderStages.data();
+		vk::GraphicsPipelineCreateInfo pipelineCreateInfo = {};
+		pipelineCreateInfo.setLayout(pipelineLayout);			// The layout used for this pipeline (can be shared among multiple pipelines using the same layout)
+		pipelineCreateInfo.setStageCount (static_cast<uint32_t>(shaderStages.size()))
+						  .setPStages (shaderStages.data());
 
 		// Assign the pipeline states to the pipeline creation info structure
-		pipelineCreateInfo.pVertexInputState = &vertexInputState;
-		pipelineCreateInfo.pInputAssemblyState = &inputAssemblyState;
-		pipelineCreateInfo.pRasterizationState = &rasterizationState;
-		pipelineCreateInfo.pColorBlendState = &colorBlendState;
-		pipelineCreateInfo.pMultisampleState = &multisampleState;
-		pipelineCreateInfo.pViewportState = &viewportState;
-		pipelineCreateInfo.pDepthStencilState = &depthStencilState;
-		pipelineCreateInfo.renderPass = renderPass;
-		pipelineCreateInfo.pDynamicState = &dynamicState;
+		pipelineCreateInfo.setPVertexInputState (&vertexInputState)
+						  .setPInputAssemblyState (&inputAssemblyState)
+						  .setPRasterizationState (&rasterizationState)
+							.setPColorBlendState (&colorBlendState)
+			.setPMultisampleState (&multisampleState)
+			.setPViewportState (&viewportState)
+			.setPDepthStencilState (&depthStencilState)
+			.setRenderPass (renderPass)
+			.setPDynamicState (&dynamicState);
 
-		// Create rendering pipeline using the specified states
-		VK_CHECK_RESULT(vkCreateGraphicsPipelines(device, pipelineCache, 1, &pipelineCreateInfo, nullptr, &pipeline));
+		// Create rendering pipeline using the specified state
+		pipeline = CHECK(vulkanDevice->D().createGraphicsPipeline (pipelineCache, pipelineCreateInfo));
 
 		// Shader modules are no longer needed once the graphics pipeline has been created
 		vkDestroyShaderModule(device, shaderStages[0].module, nullptr);
