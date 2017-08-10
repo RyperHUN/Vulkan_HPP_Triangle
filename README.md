@@ -1,4 +1,4 @@
-# Vulkan-Example-Triangle-C-
+# Vulkan HPP Triangle Example
 Simple triangle using vulkan.hpp
 
 ## Dependencies
