@@ -62,13 +62,13 @@ public:
 	// The pipeline layout is used by a pipline to access the descriptor sets 
 	// It defines interface (without binding any actual data) between the shader stages used by the pipeline and the shader resources
 	// A pipeline layout can be shared among multiple pipelines as long as their interfaces match
-	VkPipelineLayout pipelineLayout;
+	vk::PipelineLayout pipelineLayout;
 
 	// Pipelines (often called "pipeline state objects") are used to bake all states that affect a pipeline
 	// While in OpenGL every state can be changed at (almost) any time, Vulkan requires to layout the graphics (and compute) pipeline states upfront
 	// So for each combination of non-dynamic pipeline states you need a new pipeline (there are a few exceptions to this not discussed here)
 	// Even though this adds a new dimension of planing ahead, it's a great opportunity for performance optimizations by the driver
-	VkPipeline pipeline;
+	vk::Pipeline pipeline;
 
 	// The descriptor set layout describes the shader binding layout (without actually referencing descriptor)
 	// Like the pipeline layout it's pretty much a blueprint and can be used with different descriptor sets as long as their layout matches
@@ -76,7 +76,7 @@ public:
 
 	// The descriptor set stores the resources bound to the binding points in a shader
 	// It connects the binding points of the different shaders with the buffers and images used for those bindings
-	VkDescriptorSet descriptorSet;
+	vk::DescriptorSet descriptorSet;
 
 	// Synchronization primitives
 
@@ -202,12 +202,12 @@ public:
 		uboVS.modelMatrix = glm::rotate(uboVS.modelMatrix, glm::radians(rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
 
 		// Map uniform buffer and update it
-		uint8_t *pData;
-		VK_CHECK_RESULT(vkMapMemory(device, uniformBufferVS.memory, 0, sizeof(uboVS), 0, (void **)&pData));
+		
+		uint8_t *pData = (uint8_t*) CHECK(vulkanDevice->D().mapMemory (uniformBufferVS.memory, 0, sizeof(uboVS)));
 		memcpy(pData, &uboVS, sizeof(uboVS));
 		// Unmap after data has been copied
 		// Note: Since we requested a host coherent memory type for the uniform buffer, the write is instantly visible to the GPU
-		vkUnmapMemory(device, uniformBufferVS.memory);
+		vulkanDevice->D().unmapMemory (uniformBufferVS.memory);
 	}
 
 	void preparePipelines()
@@ -458,8 +458,7 @@ public:
 		vk::CommandBufferBeginInfo cmdBufInfo = {};
 		for (int32_t i = 0; i < drawCmdBuffers.size(); ++i)
 		{
-			// Set target frame buffer
-			renderPassBeginInfo.setFramebuffer(frameBuffers[i]);
+			renderPassBeginInfo.setFramebuffer(frameBuffers[i]);	// Set target frame buffer
 
 			VK_CHECK_RESULT(drawCmdBuffers[i].begin (cmdBufInfo));
 			
@@ -467,37 +466,27 @@ public:
 			// This will clear the color and depth attachment
 			drawCmdBuffers[i].beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
 
-			// Update dynamic viewport state
+			
 			vk::Viewport viewport {0, 0, (float)width, (float)height};
 			viewport.setMaxDepth (1.0f)
 					.setMinDepth (0.0f);
-		
-			drawCmdBuffers[i].setViewport(0, { viewport });
-
-			// Update dynamic scissor state
-			vk::Rect2D scissor {{0,0}, {width, height}};
-			drawCmdBuffers[i].setScissor (0, {scissor});
+			vk::Rect2D scissor{ { 0,0 },{ width, height } };
+	
+			drawCmdBuffers[i].setViewport(0, { viewport }); // Update dynamic viewport state
+			drawCmdBuffers[i].setScissor (0, {scissor});	// Update dynamic scissor state
 
 			// Bind descriptor sets describing shader binding points
-			vkCmdBindDescriptorSets(drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
-			//drawCmdBuffers[i].bindDescriptorSets (vk::PipelineBindPoint::eGraphics, pipelineLayout, 0, descriptorSet, {});
-			///TODO Pipeline layout
+			drawCmdBuffers[i].bindDescriptorSets(vk::PipelineBindPoint::eGraphics,pipelineLayout, 0, descriptorSet, {});
 
 			// Bind the rendering pipeline
 			// The pipeline (state object) contains all states of the rendering pipeline, binding it will set all the states specified at pipeline creation time
 			drawCmdBuffers[i].bindPipeline (vk::PipelineBindPoint::eGraphics, pipeline);
 
-			// Bind triangle vertex buffer (contains position and colors)
-			drawCmdBuffers[i].bindVertexBuffers (0, vertices.buffer, {0});
+			drawCmdBuffers[i].bindVertexBuffers (0, vertices.buffer, {0});	// Bind triangle vertex buffer (contains position and colors)
+			drawCmdBuffers[i].bindIndexBuffer (indices.buffer, 0, vk::IndexType::eUint32); // Bind triangle index buffer
+			drawCmdBuffers[i].drawIndexed (indices.count, 1, 0, 0, 1);					   // Draw indexed triangle
 
-			// Bind triangle index buffer
-			vkCmdBindIndexBuffer(drawCmdBuffers[i], indices.buffer, 0, VK_INDEX_TYPE_UINT32);
-
-			// Draw indexed triangle
-			vkCmdDrawIndexed(drawCmdBuffers[i], indices.count, 1, 0, 0, 1);
-
-			vkCmdEndRenderPass(drawCmdBuffers[i]);
-
+			drawCmdBuffers[i].endRenderPass ();
 			// Ending the render pass will add an implicit barrier transitioning the frame buffer color attachment to 
 			// VK_IMAGE_LAYOUT_PRESENT_SRC_KHR for presenting it to the windowing system
 
