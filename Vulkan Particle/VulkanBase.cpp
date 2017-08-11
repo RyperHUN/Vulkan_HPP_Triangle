@@ -774,7 +774,7 @@ void VulkanExampleBase::setupFrameBuffer()
 	frameBuffers.resize(swapChain.imageCount);
 	for (uint32_t i = 0; i < frameBuffers.size(); i++)
 	{
-		attachments[0] = swapChain.buffers[i].view;
+		attachments[0] = swapChain.buffers[i].view; //2 attachments: 1 for the color and 1 depth stencil
 		VK_CHECK_RESULT(vkCreateFramebuffer(vulkanDevice->GetDevice(), &frameBufferCreateInfo, nullptr, &frameBuffers[i]));
 	}
 }

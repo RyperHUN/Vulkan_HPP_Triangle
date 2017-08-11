@@ -523,7 +523,6 @@ public:
 			.setPCommandBuffers (&drawCmdBuffers[currentBuffer])	// Pointer to the list of pipeline stages that the semaphore waits will occur at
 			.setCommandBufferCount (1);								// Command buffers(s) to execute in this batch (submission)
 
-
 		VK_CHECK_RESULT(queue.submit (submitInfo, waitFences[currentBuffer]));	// Submit to the graphics queue passing a wait fence
 		VulkanExampleBase::submitFrame();
 	}
@@ -538,7 +537,7 @@ public:
 	virtual void viewChanged() override
 	{
 		// This function is called by the base example class each time the view is changed by user input
-		//updateUniformBuffers();
+		updateUniformBuffers();
 	}
 };
 
