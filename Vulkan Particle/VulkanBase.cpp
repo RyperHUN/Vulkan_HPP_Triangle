@@ -117,7 +117,7 @@ void VulkanExampleBase::prepare()
 	//{
 	//	vks::debugmarker::setup(device);
 	//}
-	createCommandPool();
+	//createCommandPool(); //vulkanDevice has a command pool
 	setupSwapChain();
 	createCommandBuffers();
 	setupDepthStencil();
@@ -319,8 +319,6 @@ VulkanExampleBase::~VulkanExampleBase()
 	vkFreeMemory(vulkanDevice->GetDevice(), depthStencil.mem, nullptr);
 
 	vkDestroyPipelineCache(vulkanDevice->GetDevice(), pipelineCache, nullptr);
-
-	vkDestroyCommandPool(vulkanDevice->GetDevice(), cmdPool, nullptr);
 
 	vkDestroySemaphore(vulkanDevice->GetDevice(), semaphores.presentComplete, nullptr);
 	vkDestroySemaphore(vulkanDevice->GetDevice(), semaphores.renderComplete, nullptr);
@@ -707,11 +705,6 @@ void VulkanExampleBase::handleMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
 void VulkanExampleBase::viewChanged() {}
 
 void VulkanExampleBase::keyPressed(uint32_t) {}
-
-void VulkanExampleBase::createCommandPool()
-{
-	cmdPool = vulkanDevice->createCommandPool (swapChain.queueNodeIndex); //Create graphics command pool
-}
 
 void VulkanExampleBase::setupDepthStencil()
 {

@@ -75,8 +75,6 @@ protected:
 	vk::Queue queue;
 	// Depth buffer format (selected during Vulkan initialization)
 	VkFormat depthFormat;
-	// Command buffer pool
-	vk::CommandPool cmdPool;
 	/** @brief Pipeline stages used to wait at for graphics queue submissions */
 	VkPipelineStageFlags submitPipelineStages = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 	// Command buffers used for rendering
@@ -210,8 +208,6 @@ public:
 	// all command buffers that may reference this
 	virtual void buildCommandBuffers() = 0;
 
-	// Creates a new (graphics) command pool object storing command buffers
-	void createCommandPool();
 	// Setup default depth and stencil views
 	virtual void setupDepthStencil();
 	// Create framebuffers for all requested swap chain images
