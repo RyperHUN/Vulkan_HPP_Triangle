@@ -154,7 +154,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Vulkan Particle.cpp" />
+    <ClCompile Include="main.cpp" />
     <ClCompile Include="VulkanBase.cpp" />
   </ItemGroup>
   <ItemGroup>

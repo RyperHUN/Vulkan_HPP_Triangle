@@ -76,7 +76,7 @@ protected:
 	// Depth buffer format (selected during Vulkan initialization)
 	VkFormat depthFormat;
 	// Command buffer pool
-	VkCommandPool cmdPool;
+	vk::CommandPool cmdPool;
 	/** @brief Pipeline stages used to wait at for graphics queue submissions */
 	VkPipelineStageFlags submitPipelineStages = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 	// Command buffers used for rendering
@@ -237,9 +237,6 @@ public:
 	// May be necessary during runtime if options are toggled 
 	void destroyCommandBuffers();
 
-	// Command buffer creation
-	// Creates and returns a new command buffer
-	VkCommandBuffer createCommandBuffer(VkCommandBufferLevel level, bool begin);
 	// End the command buffer, submit it to the queue and free (if requested)
 	// Note : Waits for the queue to become idle
 	void flushCommandBuffer(VkCommandBuffer commandBuffer, VkQueue queue, bool free);
